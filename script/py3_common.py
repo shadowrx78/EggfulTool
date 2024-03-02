@@ -1153,9 +1153,9 @@ def _tkEditorPaste(editor, event=None):
 
 def _onTkEditorRightClick(event, editor, menubar):
     menubar.delete(0,END)
-    menubar.add_command(label='复制        Ctrl+C',command=lambda:_tkEditorCopy(editor))
-    menubar.add_command(label='剪切        Ctrl+X',command=lambda:_tkEditorCut(editor))
-    menubar.add_command(label='粘贴        Ctrl+V',command=lambda:_tkEditorPaste(editor))
+    menubar.add_command(label='复制', command=lambda:_tkEditorCopy(editor), accelerator='Ctrl+C')
+    menubar.add_command(label='剪切', command=lambda:_tkEditorCut(editor), accelerator='Ctrl+X')
+    menubar.add_command(label='粘贴', command=lambda:_tkEditorPaste(editor), accelerator='Ctrl+V')
     menubar.post(event.x_root,event.y_root)
 
 # 绑定输入框右键（复制、剪切、粘贴）

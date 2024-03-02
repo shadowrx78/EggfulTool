@@ -61,6 +61,7 @@ class ListLineNodeView(Toplevel):
         self.bind('<Return>', lambda e:self.onBtnClose())
         self.bind('<Up>', lambda e,v=-1:self.selectListboxWithShift(v))
         self.bind('<Down>', lambda e,v=1:self.selectListboxWithShift(v))
+        self.bind('<Alt-c>', self.onAltCClick)
         # self.protocol("WM_DELETE_WINDOW", self.onClose)
 
         frameTop = Frame(self)
@@ -108,6 +109,15 @@ class ListLineNodeView(Toplevel):
         self.after(100, lambda: self.searchEntry.focus_set())
         configureTkObjectColor(searchEntry)
 
+        # 选项
+        # 区分大小写
+        self.checkbuttonNoIgnorecaseVar = IntVar()
+        self.checkbuttonNoIgnorecaseVar.set(1 if GlobalValue.SEARCH_VIEW_NO_IGNORECASE else 0)
+        checkbuttonNoIgnorecase = Checkbutton(frameMiddle, text=str('区分大小写'), variable=self.checkbuttonNoIgnorecaseVar, command=lambda :self.onNoIgnorecaseVarChange())
+        checkbuttonNoIgnorecase.grid(row=1, column=0, sticky='w')
+        self.checkbuttonNoIgnorecase = checkbuttonNoIgnorecase
+        configureTkObjectColor(checkbuttonNoIgnorecase)
+
         # 留间距
         frameTemp = Frame(self)
         frameTemp.grid(row=2,column=0,sticky='nsew')
@@ -154,11 +164,17 @@ class ListLineNodeView(Toplevel):
         isEmpty = re.search(r'^\s*$', self.searchStr)
         pattern = None
         try:
-            pattern = re.compile(r'%s' % self.searchStr)
+            if GlobalValue.SEARCH_VIEW_NO_IGNORECASE:
+                pattern = re.compile(r'%s' % self.searchStr)
+            else:
+                pattern = re.compile(r'%s' % self.searchStr, flags=re.I)
         except Exception as e:
             fixStr = fixReInputStr(self.searchStr)
             # py3_common.Logging.info(fixStr)
-            pattern = re.compile(r'%s' % fixStr.lower())
+            if GlobalValue.SEARCH_VIEW_NO_IGNORECASE:
+                pattern = re.compile(r'%s' % fixStr)
+            else:
+                pattern = re.compile(r'%s' % fixStr, flags=re.I)
 
         if self.tlScreenNodeData != None:
             for i in range(0,len(self.tlScreenNodeData)):
@@ -172,7 +188,7 @@ class ListLineNodeView(Toplevel):
                     text = nodeData['btnText'] if 'btnText' in nodeData else ''
                 canAdd = True
                 # if not re.search(r'^\s*$', self.searchStr) and not re.search(r'%s' % self.searchStr.lower(), text.lower()):
-                if not isEmpty and not pattern.search(text.lower()):
+                if not isEmpty and not pattern.search(text):
                     canAdd = False
                 if canAdd:
                     self.tlConvertScreenNodeData.append(i)       #记录
@@ -235,3 +251,12 @@ class ListLineNodeView(Toplevel):
         if index != None:
             listbox.see(index)
         self.onListboxLineSelect(None)
+
+    def onNoIgnorecaseVarChange(self):
+        GlobalValue.SEARCH_VIEW_NO_IGNORECASE = self.checkbuttonNoIgnorecaseVar.get() > 0
+        self.refreshListBoxLine()
+
+    def onAltCClick(self, event):
+        v = self.checkbuttonNoIgnorecaseVar
+        v.set(0 if v.get() > 0 else 1)
+        self.onNoIgnorecaseVarChange()

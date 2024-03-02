@@ -2,3 +2,7 @@ __pycache__
 build
 dist
 *.spec
+nodesConfig.json
+settingConfig.json
+deletedNodes.json
+backup

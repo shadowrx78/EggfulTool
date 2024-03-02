@@ -56,7 +56,7 @@ from script.view.RootSettingView import *
 
 PROGRAM_TITLE_NAME = '有点卵用工具'
 PROGRAM_NAME = 'EggfulTool'
-PROGRAM_VERSION = '1.0.6'
+PROGRAM_VERSION = '1.0.7α1'
 
 TL_UI_MODE_DATA = [
     {'name':'通常', 'key':UiModeEnum.Normal},

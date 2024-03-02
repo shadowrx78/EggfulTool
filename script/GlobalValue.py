@@ -41,7 +41,7 @@ from .EventProxy import *
 #----------------global value & enum----------------
 
 # debug模式
-IS_DEBUG = False
+IS_DEBUG = True
 
 # 模式
 class UiModeEnum:
@@ -206,6 +206,8 @@ DISABLE_RCLICK_EDIT_NODE = False
 TEMP_NODE_LIST = None
 # 主界面线程池
 ROOT_THREAD_POOL_EXECUTOR = None
+# 搜索界面区分大小写
+SEARCH_VIEW_NO_IGNORECASE = False
 
 
 
