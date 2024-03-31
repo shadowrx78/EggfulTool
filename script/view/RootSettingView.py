@@ -144,6 +144,17 @@ class RootSettingView(Toplevel):
         labelColorTitle.grid(row=frameColorRowIndex, column=0, sticky='w')
         self.tlConUi.append(labelColorTitle)
         frameColorRowIndex += 1
+
+        btnColMax = 6
+        def getColorBtnGridKwargs(num, colMax=btnColMax, padx=lbPadding, pady=lbPadding):
+            tmGridArgs = dict()
+            tmGridArgs['row'] = math.floor(num/colMax)
+            tmGridArgs['column'] = num % colMax
+            tmGridArgs['padx'] = padx
+            # tmGridArgs['pady'] = pady if tmGridArgs['row'] > 0 else 0
+            tmGridArgs['pady'] = pady
+            return tmGridArgs
+
         # 通用
         labelColorTemp = Label(frameColor, text='通用：', anchor='w')
         labelColorTemp.grid(row=frameColorRowIndex, column=0, sticky='w')
@@ -154,22 +165,24 @@ class RootSettingView(Toplevel):
             frameTemp.grid(row=frameColorRowIndex, column=0, sticky='ew')
             self.tlConUi.append(frameTemp)
             frameColorRowIndex += 1
-            tempRow = 0
             tempCol = 0
             lbTemp = self.createColorLabelBtn(frameTemp, '背景', ['common', 'bgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '前景', ['common', 'fgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '节点选中', ['common', 'selectColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '画布背景', ['common', 'canvasBgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '按钮禁用文本', ['common', 'btnDisabledFgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
+            tempCol += 1
+            lbTemp = self.createColorLabelBtn(frameTemp, '按钮文本', ['common', 'btnFgColor'])
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
         # 输入框
         labelColorTemp = Label(frameColor, text='输入框：', anchor='w')
@@ -181,22 +194,21 @@ class RootSettingView(Toplevel):
             frameTemp.grid(row=frameColorRowIndex, column=0, sticky='ew')
             self.tlConUi.append(frameTemp)
             frameColorRowIndex += 1
-            tempRow = 0
             tempCol = 0
             lbTemp = self.createColorLabelBtn(frameTemp, '背景', ['common', 'tkEntry', 'bgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '选中背景', ['common', 'tkEntry', 'selectBgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '选中前景', ['common', 'tkEntry', 'selectFgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '禁用背景', ['common', 'tkEntry', 'disabledBgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '禁用前景', ['common', 'tkEntry', 'disabledFgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
         # 滚动条
         labelColorTemp = Label(frameColor, text='滚动条：', anchor='w')
@@ -208,22 +220,21 @@ class RootSettingView(Toplevel):
             frameTemp.grid(row=frameColorRowIndex, column=0, sticky='ew')
             self.tlConUi.append(frameTemp)
             frameColorRowIndex += 1
-            tempRow = 0
             tempCol = 0
             lbTemp = self.createColorLabelBtn(frameTemp, '槽背景', ['common', 'ttkScrollbar', 'troughcolor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '背景', ['common', 'ttkScrollbar', 'background', 'normal'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '选中背景', ['common', 'ttkScrollbar', 'background', 'active'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '禁用背景', ['common', 'ttkScrollbar', 'background', 'disabled'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '禁用箭头', ['common', 'ttkScrollbar', 'arrowcolor', 'disabled'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
         # 分割线
         labelColorTemp = Label(frameColor, text='分割线节点：', anchor='w')
@@ -235,16 +246,15 @@ class RootSettingView(Toplevel):
             frameTemp.grid(row=frameColorRowIndex, column=0, sticky='ew')
             self.tlConUi.append(frameTemp)
             frameColorRowIndex += 1
-            tempRow = 0
             tempCol = 0
             lbTemp = self.createColorLabelBtn(frameTemp, '背景', ['line', 'bgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '文本', ['line', 'fgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '选中文本', ['line', 'selectFgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
         # 按钮节点
         labelColorTemp = Label(frameColor, text='按钮节点：', anchor='w')
@@ -252,87 +262,103 @@ class RootSettingView(Toplevel):
         self.tlConUi.append(labelColorTemp)
         frameColorRowIndex += 1
         if True:
-            frameTemp = Frame(frameColor)
-            frameTemp.grid(row=frameColorRowIndex, column=0, sticky='ew')
-            self.tlConUi.append(frameTemp)
+            frameTemp0 = Frame(frameColor)
+            frameTemp0.grid(row=frameColorRowIndex, column=0, sticky='ew')
+            self.tlConUi.append(frameTemp0)
             frameColorRowIndex += 1
             tempRow = 0
             tempCol = 0
-            spanTemp = 0
-            labelTemp = Label(frameTemp, text='<通用>', anchor='w')
-            labelTemp.grid(row=tempRow, column=tempCol, sticky='w')
+
+            labelTemp = Label(frameTemp0, text='<通用>', anchor='w')
+            labelTemp.grid(row=tempRow, column=0, sticky='w')
             self.tlConUi.append(labelTemp)
             tempRow += 1
+            frameTemp = Frame(frameTemp0)
+            frameTemp.grid(row=tempRow, column=0, sticky='ew')
+            self.tlConUi.append(frameTemp)
+            tempRow += 1
+            tempCol =0
             lbTemp = self.createColorLabelBtn(frameTemp, '背景', ['btn', 'bgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '按钮背景', ['btn', 'btnBgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '按钮文本', ['btn', 'btnFgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '拖入标识背景', ['btn', 'markDropBgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '拖入标识文本', ['btn', 'markDropFgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
-            tempCol =0
-            tempRow += 1
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
+            tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '标记标识背景', ['btn', 'markBookmarkBgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '标记标识文本', ['btn', 'markBookmarkFgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '询问标识背景', ['btn', 'markAskExeBgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '询问标识文本', ['btn', 'markAskExeFgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '禁用类型背景', ['btn', 'typeDisableBgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
-            tempCol =0
-            tempRow += 1
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
+            tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '禁用类型文本', ['btn', 'typeDisableTextColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
-            tempCol =0
-            tempRow += 1
-            labelTemp = Label(frameTemp, text='<folder>', anchor='w')
-            labelTemp.grid(row=tempRow, column=tempCol, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
+            tempCol += 1
+
+            labelTemp = Label(frameTemp0, text='<folder>', anchor='w')
+            labelTemp.grid(row=tempRow, column=0, sticky='w')
             self.tlConUi.append(labelTemp)
-            tempCol =0
             tempRow += 1
+            frameTemp = Frame(frameTemp0)
+            frameTemp.grid(row=tempRow, column=0, sticky='ew')
+            self.tlConUi.append(frameTemp)
+            tempRow += 1
+            tempCol =0
             lbTemp = self.createColorLabelBtn(frameTemp, '类型背景', ['folder', 'typeBgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '类型文本', ['folder', 'typeTextColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
-            tempCol =0
-            tempRow += 1
-            labelTemp = Label(frameTemp, text='<exe>', anchor='w')
-            labelTemp.grid(row=tempRow, column=tempCol, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
+            tempCol += 1
+
+            labelTemp = Label(frameTemp0, text='<exe>', anchor='w')
+            labelTemp.grid(row=tempRow, column=0, sticky='w')
             self.tlConUi.append(labelTemp)
-            tempCol =0
             tempRow += 1
+            frameTemp = Frame(frameTemp0)
+            frameTemp.grid(row=tempRow, column=0, sticky='ew')
+            self.tlConUi.append(frameTemp)
+            tempRow += 1
+            tempCol =0
             lbTemp = self.createColorLabelBtn(frameTemp, '类型背景', ['exe', 'typeBgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '类型文本', ['exe', 'typeTextColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
-            tempCol =0
-            tempRow += 1
-            labelTemp = Label(frameTemp, text='<cmd>', anchor='w')
-            labelTemp.grid(row=tempRow, column=tempCol, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
+            tempCol += 1
+
+            labelTemp = Label(frameTemp0, text='<cmd>', anchor='w')
+            labelTemp.grid(row=tempRow, column=0, sticky='w')
             self.tlConUi.append(labelTemp)
-            tempCol =0
             tempRow += 1
+            frameTemp = Frame(frameTemp0)
+            frameTemp.grid(row=tempRow, column=0, sticky='ew')
+            self.tlConUi.append(frameTemp)
+            tempRow += 1
+            tempCol =0
             lbTemp = self.createColorLabelBtn(frameTemp, '类型背景', ['cmd', 'typeBgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '类型文本', ['cmd', 'typeTextColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
+            tempCol += 1
         # 创建节点
         labelColorTemp = Label(frameColor, text='创建节点：', anchor='w')
         labelColorTemp.grid(row=frameColorRowIndex, column=0, sticky='w')
@@ -343,13 +369,12 @@ class RootSettingView(Toplevel):
             frameTemp.grid(row=frameColorRowIndex, column=0, sticky='ew')
             self.tlConUi.append(frameTemp)
             frameColorRowIndex += 1
-            tempRow = 0
             tempCol = 0
             lbTemp = self.createColorLabelBtn(frameTemp, '背景', ['create', 'bgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
             lbTemp = self.createColorLabelBtn(frameTemp, '前景', ['create', 'fgColor'])
-            lbTemp.grid(row=tempRow, column=tempCol, padx=lbPadding, pady=lbPadding if tempRow > 0 else 0, sticky='w')
+            lbTemp.grid(sticky='w', **getColorBtnGridKwargs(tempCol))
             tempCol += 1
 
         for i in range(0,len(self.tlConUi)):

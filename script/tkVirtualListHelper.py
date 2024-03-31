@@ -379,6 +379,14 @@ class VirtualListCanvas(Canvas):
         if 'isBindMouseWheel' in self.args and self.args['isBindMouseWheel']:
             self.bind('<Enter>', self.bindCanvasMousewheel)
             self.bind('<Leave>', self.unbindCanvasMousewheel)
+            self.bind('<Destroy>', self.onDestroy)
+
+        # # 创建参照节点
+        # self.referNode = None
+        # if self.createNodeFun:
+        #     self.referNode = self.createNodeFun(None, self.scrollFrame, True)
+        #     self.referNode.setPos(-5000,-5000)
+        #     self.referNode.setVisible(False)
 
 
         # ---------缓存初始化---------
@@ -398,10 +406,10 @@ class VirtualListCanvas(Canvas):
         self.scrollFrame.configure(width=self.winfo_width()-4)
         # self.refreshListView()
         if hasattr(event, 'height') and self.tmOldCanvasSize['height'] != event.height:
-            if self.realScrollFrameHeight:
-                # scrollFrame高度太小会可以上下滚
-                height_ = max(self.realScrollFrameHeight, self.winfo_height()-4)
-                self.scrollFrame.configure(height=height_)
+            # if self.realScrollFrameHeight:
+            #     # scrollFrame高度太小会可以上下滚
+            #     height_ = max(self.realScrollFrameHeight, self.winfo_height()-4)
+            #     self.scrollFrame.configure(height=height_)
             self.refreshListView()
         if hasattr(event, 'width'):
             self.tmOldCanvasSize['width'] = event.width
@@ -818,6 +826,14 @@ class VirtualListCanvas(Canvas):
     def _getNodeSizeWithData(self, data=None):
         if self.getNodeSizeWithDataFun:
             return self.getNodeSizeWithDataFun(data)
+        # if self.referNode != None:
+        #     self.referNode.updateArgs(data)
+        #     self.referNode.setVisible(True)
+        #     self.referNode.update_idletasks()
+        #     w, h = self.referNode.winfo_width(), self.referNode.winfo_height()
+        #     # print('_getNodeSizeWithData', w, h)
+        #     self.referNode.setVisible(False)
+        #     return w, h
         return 0, 0
 
 
@@ -845,8 +861,17 @@ class VirtualListCanvas(Canvas):
             # self.unbind_all("<Control-MouseWheel>")
             # self.unbind_all("<Shift-MouseWheel>")
 
+    def onDestroy(self, event):
+        try:
+            self.unbindCanvasMousewheel(None)
+        except Exception as e:
+            # raise e
+            py3_common.Logging.error(e)
+
     # 响应滚动(滚轮)
     def onCanvasMousewheel(self, event):
+        if self.yview() == (0.0, 1.0):
+            return
         # //整除
         delta = (event.delta // 120)
         # mac有点不一样
@@ -890,8 +915,8 @@ class VirtualListFrame(Frame):
         onScrollFrameConfigureFun:function(configureData) 滑动Frame属性改变回调（可选）
             configureData:{'changeField':set('width','height','x','y'), 'event':event}
         padding:{'w':number, 'h':number} 间隔（可选）
-        hasScrollbar:bool 有无滚动条（可选）
-        isBindMouseWheel:bool 是否绑定鼠标滚轮滚动（可选）
+        hasScrollbar:bool 有无滚动条，默认True
+        isBindMouseWheel:bool 是否绑定鼠标滚轮滚动，默认True
         canvasKwArgs:dict 画布初始化参数（可选）
     kwargs:tkinter Frame初始化参数
     """
@@ -919,10 +944,15 @@ class VirtualListFrame(Frame):
 
         # # 鼠标滚动相关
         # if 'isBindMouseWheel' in args and args['isBindMouseWheel']:
+        if not 'isBindMouseWheel' in args or args['isBindMouseWheel'] == None:
+            args['isBindMouseWheel'] = True
         self.bind('<Enter>', self.onEnter)
         self.bind('<Leave>', self.onLeave)
+        self.bind('<Destroy>', self.onDestroy)
 
         # 滚动条
+        if not 'hasScrollbar' in args or args['hasScrollbar'] == None:
+            args['hasScrollbar'] = True
         if 'hasScrollbar' in args and args['hasScrollbar']:
             canvasVsb = ttk.Scrollbar(self,orient="vertical",command=self.virtualListCanvas.yview)
             self.virtualListCanvas.configure(yscrollcommand=canvasVsb.set)
@@ -949,6 +979,13 @@ class VirtualListFrame(Frame):
 
         if 'onLeaveFun' in args:
             args['onLeaveFun'](event)
+
+    def onDestroy(self, event):
+        try:
+            self.onLeave(None)
+        except Exception as e:
+            # raise e
+            py3_common.Logging.error(e)
 
 
     # 画布鼠标滚轮监听
@@ -977,6 +1014,8 @@ class VirtualListFrame(Frame):
 
     # 响应滚动(滚轮)
     def onCanvasMousewheel(self, event):
+        if self.virtualListCanvas.yview() == (0.0, 1.0):
+            return
         # //整除
         delta = (event.delta // 120)
         # mac有点不一样

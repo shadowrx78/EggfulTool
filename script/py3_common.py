@@ -21,6 +21,7 @@ from sys import platform
 
 from tkinter import *
 from tkinter import messagebox
+from tkinter import font
 import traceback
 
 
@@ -89,12 +90,12 @@ class Logging:
         Logging.log(*s, color=Logging.FOREGROUND_YELLOW, end=end)
 
     @staticmethod
-    def error(*s, end='\n'):
+    def error(*s, end='\n', isShowMessageBox=IS_ERROR_SHOW_MESSAGEBOX, messageboxParent=None):
         Logging.error_(*s, end=end)
         errStr = traceback.format_exc()
         Logging.error_(errStr, end=end)
-        if IS_ERROR_SHOW_MESSAGEBOX:
-            messageboxShowerror('错误', errStr)
+        if isShowMessageBox:
+            messageboxShowerror('错误', errStr, parent=messageboxParent)
 
     @staticmethod
     def error_(*s, end='\n'):
@@ -118,7 +119,8 @@ class Logging:
 
     @staticmethod
     def debug3(*s, end='\n'):
-        Logging.log(*s, color=Logging.FOREGROUND_BLUE|Logging.BACKGROUND_YELLOW, end=end)
+        # Logging.log(*s, color=Logging.FOREGROUND_BLUE|Logging.BACKGROUND_YELLOW, end=end)
+        Logging.log(*s, color=Logging.FOREGROUND_DARKSKYBLUE, end=end)
 
 
 # run cmd 
@@ -790,9 +792,11 @@ def isSlash(c):
 
 
 # 深拷贝 分层遍历
-def deep_copy_dict(base_dict, isOrdered=True):
+def deep_copy_dict(base_dict, isOrdered=None):
     temp_dict = None
     if isinstance(base_dict, dict):
+        if isOrdered == None:
+            isOrdered = isinstance(base_dict, OrderedDict)
         temp_dict = OrderedDict() if isOrdered else dict()
     elif isinstance(base_dict, list):
         temp_dict = list()
@@ -833,7 +837,7 @@ def deep_copy_dict(base_dict, isOrdered=True):
         remain_copy_list = remain_copy_list_
     return temp_dict
 
-# 补全默认字段 递归，深度太高会炸，但我懒得优化
+# 补全默认字段 递归，深度太高会炸
 def sync_json_field(default_j_list, j_list):
     hasModify = False
     for key in default_j_list:
@@ -847,7 +851,56 @@ def sync_json_field(default_j_list, j_list):
                 hasModify = (hasModify or hasModify_)
     return j_list, hasModify
 
-# 按模板排序字段 递归 问题同上
+# 补全或排除默认值字段 分层遍历
+# exclude True当字段值==默认值时删除字段，False当字段不存在时按照默认值补全字段
+def sync_json_field2(default_j_list, j_list=None, exclude=False):
+    isReturnDefault = False
+    try:
+        if j_list == None or (isinstance(default_j_list, list) and len(j_list) == 0) or (isinstance(default_j_list, dict) and not bool(j_list)):
+            isReturnDefault = True
+    except Exception as e:
+        isReturnDefault = True
+    if isReturnDefault:
+        if not isinstance(default_j_list, dict) and not isinstance(default_j_list, list):
+            return j_list
+        if isinstance(default_j_list, dict):
+            return (dict() if j_list == None else j_list) if exclude else deep_copy_dict(default_j_list)
+        elif isinstance(default_j_list, list):
+            return (list() if j_list == None else j_list) if exclude else deep_copy_dict(default_j_list)
+    elif isinstance(default_j_list, list):  #列表不处理
+        return j_list
+
+    tlTlKey = list()
+    tlTlKeyTemp = getTlTlKey(j_list, isEmptyDictOrListAsValue=True)
+    for i in range(0,len(tlTlKeyTemp)):
+        tlKey = tlTlKeyTemp[i]
+        # 列表当作值处理
+        if isinstance(tlKey[len(tlKey)-1], int):    #列表
+            index = len(tlKey)-2
+            while isinstance(tlKey[index], int) and index >= 0:
+                index -= 1
+            if index >= 0:
+                tlKey = tlKey[:index+1]
+                if not tlKey in tlTlKey:
+                    tlTlKey.append(tlKey)
+        else:
+            tlTlKey.append(tlKey)
+        # if not isinstance(tlKey[len(tlKey)-1], int):
+        #     tlTlKey.append(tlKey)
+
+    tmTemp = dict() if exclude else deep_copy_dict(default_j_list)
+    for i in range(0,len(tlTlKey)):
+        tlKey = tlTlKey[i]
+        value, suc1 = getValueWithTlKey(j_list, tlKey)
+        defaultValue, suc2 = getValueWithTlKey(default_j_list, tlKey)
+        if suc1:
+            if exclude and suc2:
+                setValueWithTlKey(tmTemp, tlKey, value, defaultValue, isExcludeDefault=True)
+            else:
+                setValueWithTlKey(tmTemp, tlKey, value)
+    return tmTemp
+
+# 按模板排序字段 递归 深度太高会炸
 def sort_json_field(default_j_list, j_list, isDeepCopy=True):
     default_j_list_ = deep_copy_dict(default_j_list) if isDeepCopy else default_j_list
 
@@ -866,9 +919,11 @@ def sort_json_field(default_j_list, j_list, isDeepCopy=True):
 
 
 # 根据key路径获取值
-def getValueWithTlKey(tlKey, dictOrList):
+def getValueWithTlKey(dictOrList, tlKey):
     if dictOrList == None or (not isinstance(dictOrList, dict) and not isinstance(dictOrList, list)):
         return None, False
+    if len(tlKey) == 0:
+        return dictOrList, True
     temp = dictOrList
     for i in range(0,len(tlKey)):
         suc = False
@@ -891,7 +946,8 @@ def getValueWithTlKey(tlKey, dictOrList):
     return temp, True
 
 # 获取所有到值的key路径
-def getTlTlKey(dictOrList):
+# isEmptyDictOrListAsValue:bool 是否将空字典和空列表当作值
+def getTlTlKey(dictOrList, isEmptyDictOrListAsValue=False):
     if dictOrList == None or (not isinstance(dictOrList, dict) and not isinstance(dictOrList, list)):
         return None
 
@@ -901,9 +957,20 @@ def getTlTlKey(dictOrList):
                 value = tmTemp[key]
                 tlKeyTemp = deep_copy_dict(tlKeyLast)
                 tlKeyTemp.append(key)
-                if isinstance(value, dict) or isinstance(value, list):
-                    # 有下级dict或list，记录为下一级父节点
-                    tempTlTlKeyHaveNext.append(tlKeyTemp)
+                if isinstance(value, dict):
+                    if isEmptyDictOrListAsValue and not bool(value):
+                        # 空字典空列表当值
+                        tlTlKey.append(tlKeyTemp)
+                    else:
+                        # 有下级dict或list，记录为下一级父节点
+                        tempTlTlKeyHaveNext.append(tlKeyTemp)
+                elif isinstance(value, list):
+                    if isEmptyDictOrListAsValue and len(value) == 0:
+                        # 空字典空列表当值
+                        tlTlKey.append(tlKeyTemp)
+                    else:
+                        # 有下级dict或list，记录为下一级父节点
+                        tempTlTlKeyHaveNext.append(tlKeyTemp)
                 else:
                     # 值，当作子节点终点
                     tlTlKey.append(tlKeyTemp)
@@ -912,9 +979,20 @@ def getTlTlKey(dictOrList):
                 value = tmTemp[i]
                 tlKeyTemp = deep_copy_dict(tlKeyLast)
                 tlKeyTemp.append(i)
-                if isinstance(value, dict) or isinstance(value, list):
-                    # 有下级dict或list，记录为下一级父节点
-                    tempTlTlKeyHaveNext.append(tlKeyTemp)
+                if isinstance(value, dict):
+                    if isEmptyDictOrListAsValue and not bool(value):
+                        # 空字典空列表当值
+                        tlTlKey.append(tlKeyTemp)
+                    else:
+                        # 有下级dict或list，记录为下一级父节点
+                        tempTlTlKeyHaveNext.append(tlKeyTemp)
+                elif isinstance(value, list):
+                    if isEmptyDictOrListAsValue and len(value) == 0:
+                        # 空字典空列表当值
+                        tlTlKey.append(tlKeyTemp)
+                    else:
+                        # 有下级dict或list，记录为下一级父节点
+                        tempTlTlKeyHaveNext.append(tlKeyTemp)
                 else:
                     # 值，当作子节点终点
                     tlTlKey.append(tlKeyTemp)
@@ -931,25 +1009,46 @@ def getTlTlKey(dictOrList):
         tempTlTlKeyHaveNext = list()
         for i in range(0,len(tlTlKeyHaveNext)):
             tlKeyHaveNext = tlTlKeyHaveNext[i]
-            tmTemp, suc = getValueWithTlKey(tlKeyHaveNext, dictOrList)
+            tmTemp, suc = getValueWithTlKey(dictOrList, tlKeyHaveNext)
             helper(tmTemp, tlKeyHaveNext, tempTlTlKeyHaveNext, tlTlKey)
         tlTlKeyHaveNext = tempTlTlKeyHaveNext
 
     return tlTlKey
 
 # 根据key路径设置键值对
-# isExcludeDefault 当值(value)与默认值(defaultValue)相等时删除
-def setValueWithTlKey(dictOrList, tlKey, value, defaultValue=None, isExcludeDefault=False):
+# tlKey:list 修改的字段在数据内地址，空列表表示修改整个dictOrList
+# isExcludeDefault:bool True时，当值(value)与默认值(defaultValue)相等时删除
+# isDel:bool True时删除字段
+# isInsert:bool 是否插入字段，只有当值所在位置是list才生效，True时插入，False时覆盖
+def setValueWithTlKey(dictOrList, tlKey, value, defaultValue=None, isExcludeDefault=False, isDel=False, isInsert=False):
     if dictOrList == None or (not isinstance(dictOrList, dict) and not isinstance(dictOrList, list)):
         return False
 
     needDel = False
     if isExcludeDefault and value == defaultValue:
         needDel = True
+    if isDel:
+        needDel = True
 
-    tempValue, suc = getValueWithTlKey(tlKey, dictOrList)
+    tempValue, suc = getValueWithTlKey(dictOrList, tlKey)
     if needDel and not suc:
         # 需要删但是本来就没值
+        return True
+
+    # 空列表，修改整个dictOrList
+    if len(tlKey) == 0:
+        if isinstance(dictOrList, list):
+            del dictOrList[0:]
+            for i in range(0,len(value)):
+                dictOrList.append(value[i])
+        elif isinstance(dictOrList, dict):
+            tlK = list()
+            for k in dictOrList:
+                tlK.append(k)
+            for i in range(0,len(tlK)):
+                del dictOrList[tlK[i]]
+            for k in value:
+                dictOrList[k] = value[k]
         return True
 
     temp = dictOrList
@@ -959,7 +1058,16 @@ def setValueWithTlKey(dictOrList, tlKey, value, defaultValue=None, isExcludeDefa
             if needDel:
                 del temp[key]
             else:
-                temp[key] = value
+                if isinstance(temp, list):
+                    if key >= len(temp):    #超过长度直接添加
+                        temp.append(value)
+                    else:
+                        if isInsert:    #插入
+                            temp.insert(key, value)
+                        else:       #覆盖
+                            temp[key] = value
+                else:
+                    temp[key] = value
         else:
             if isinstance(temp, dict):
                 if not isinstance(key, str):
@@ -983,6 +1091,11 @@ def setValueWithTlKey(dictOrList, tlKey, value, defaultValue=None, isExcludeDefa
                         temp.append(list())
                     else:
                         temp.append(dict())
+                if temp[key] == None:
+                    if isinstance(tlKey[i+1], int):     #key是int的是list
+                        temp[key] = list()
+                    else:
+                        temp[key] = dict()
                 temp = temp[key]
             else:
                 # key路径没走完，temp不是dict或list，跳出
@@ -1139,8 +1252,23 @@ def setTextText(text, textStr):
         pass
     text.insert('1.0', textStr)
 
-def setEntryEnable(entry, enable):
-    entry.configure(state='normal' if enable else 'disabled')
+# 输入框&文本框
+def setEditorEnable(editor, enable):
+    editor.configure(state='normal' if enable else 'disabled')
+
+def setEditorText(editor, text):
+    className = editor.__class__.__name__
+    if className == 'Entry':
+        return setEntryText(editor, text)
+    elif className == 'Text':
+        return setTextText(editor, text)
+
+def getEditorText(editor):
+    className = editor.__class__.__name__
+    if className == 'Entry':
+        return getEntryText(editor)
+    elif className == 'Text':
+        return getTextText(editor)
 
 def _tkEditorCopy(editor, event=None):
     editor.event_generate("<<Copy>>")
@@ -1152,15 +1280,30 @@ def _tkEditorPaste(editor, event=None):
     editor.event_generate("<<Paste>>")
 
 def _onTkEditorRightClick(event, editor, menubar):
+    isEnable = True
+    isEntry = False
+    try:
+        isEntry = editor.__class__.__name__ == 'Entry'
+        isEnable = editor['state'] != 'disabled'
+    except Exception as e:
+        # raise e
+        pass
     menubar.delete(0,END)
-    menubar.add_command(label='复制', command=lambda:_tkEditorCopy(editor), accelerator='Ctrl+C')
-    menubar.add_command(label='剪切', command=lambda:_tkEditorCut(editor), accelerator='Ctrl+X')
-    menubar.add_command(label='粘贴', command=lambda:_tkEditorPaste(editor), accelerator='Ctrl+V')
+    if isEnable:
+        menubar.add_command(label='复制', command=lambda:_tkEditorCopy(editor), accelerator='Ctrl+C')
+        menubar.add_command(label='剪切', command=lambda:_tkEditorCut(editor), accelerator='Ctrl+X')
+        menubar.add_command(label='粘贴', command=lambda:_tkEditorPaste(editor), accelerator='Ctrl+V')
+    else:
+        # 不可用时entry无法选中，text可以
+        if not isEntry:
+            menubar.add_command(label='复制', command=lambda:_tkEditorCopy(editor), accelerator='Ctrl+C')
     menubar.post(event.x_root,event.y_root)
 
 # 绑定输入框右键（复制、剪切、粘贴）
-def bindTkEditorRightClick(editor, root):
+def bindTkEditorRightClick(editor, root, tkThemeHelper=None):
     menubar = Menu(root, tearoff=False)
+    if tkThemeHelper != None:
+        tkThemeHelper.addTkObj(menubar)
     editor.bind('<Button-3>', lambda e, ent=editor, menu=menubar:_onTkEditorRightClick(e, ent, menu))
 
 # 按钮
@@ -1171,6 +1314,45 @@ def setBtnEnable(btn, enable):
 # 选中框
 def setCheckbuttonEnable(checkbutton, enable):
     checkbutton.configure(state='normal' if enable else 'disabled')
+
+# 创建tk字体
+def createTkFont(master, fontSize, fontName='TkDefaultFont', kwargs=dict()):
+    tkFontActual = font.nametofont(fontName).actual()
+    # fontSize = args['fontSize'] if 'fontSize' in args else GlobalValue.DEFAULT_TK_FONT_SIZE
+    # if fontSize == None:
+    #     fontSize = DEFAULT_TK_FONT_SIZE
+    localFont = font.Font(master, size=fontSize)
+    tkFontKwargs = dict()
+    if 'weight' in tkFontActual:
+        tkFontKwargs['weight'] = tkFontActual['weight']
+    if 'family' in tkFontActual:
+        tkFontKwargs['family'] = tkFontActual['family']
+    if 'slant' in tkFontActual:
+        tkFontKwargs['slant'] = tkFontActual['slant']
+    if 'underline' in tkFontActual:
+        tkFontKwargs['underline'] = tkFontActual['underline']
+    if 'overstrike' in tkFontActual:
+        tkFontKwargs['overstrike'] = tkFontActual['overstrike']
+    sync_json_field(tkFontKwargs, kwargs)
+    localFont.configure(**kwargs)
+
+    return localFont
+
+# tk表格设置值
+# tlTitle:list 列标题
+# tlRowIndex:list 行标题
+# tlTlData:list[list] 每行数据
+def setDataToTkSheet(sheet, tlTitle=list(), tlRowIndex=list(), tlTlData=list()):
+    sheet.fix_select_col_with_tl_header(tlTitle)
+    sheet.headers(tlTitle)
+    sheet.row_index(tlRowIndex)
+    sheet.set_sheet_data(tlTlData)
+    try:
+        if sheet.RI.get_current_width() < sheet.RI.get_default_width():
+            sheet.RI.reset_width()
+    except Exception as e:
+        # raise e
+        pass
 
 
 # 解析tkdnd拖入事件数据，只接受('%D',)
@@ -1212,7 +1394,7 @@ def showError(self, *args):
 
 
 # 报错弹框过滤
-def messageboxShowerror(title, errStr):
+def messageboxShowerror(title, errStr, parent=None):
     tlSkipTagStr = [
         'WinError 1223',        #操作已被用户取消
     ]
@@ -1224,4 +1406,13 @@ def messageboxShowerror(title, errStr):
 
     # Logging.info('isSkip:%s' % isSkip)
     if not isSkip:
-        messagebox.showerror('错误', errStr)
+        if parent != None:
+            messagebox.showerror('错误', errStr, parent=parent)
+        else:
+            messagebox.showerror('错误', errStr)
+
+
+def messageboxShowerror2(title, errStr, isLoggingError=False, *args, **kwargs):
+    if isLoggingError:
+        Logging.error(errStr, isShowMessageBox=False)
+    messagebox.showerror('错误', errStr, *args, **kwargs)

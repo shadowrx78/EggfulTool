@@ -274,8 +274,8 @@ class NodeSettingView(Toplevel):
         # 大小
         entryW = self.entryW
         entryH = self.entryH
-        py3_common.setEntryEnable(entryW, key != 'line')
-        # py3_common.setEntryEnable(entryH, key != 'line')
+        py3_common.setEditorEnable(entryW, key != 'line')
+        # py3_common.setEditorEnable(entryH, key != 'line')
         dw, dh = self.getDefaultSize(key)
         py3_common.setEntryText(entryW, str(tempData['width']) if 'width' in tempData else str(dw))
         py3_common.setEntryText(entryH, str(tempData['height']) if 'height' in tempData else str(dh))

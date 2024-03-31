@@ -15,10 +15,14 @@ class EventType:
 # 事件代理
 class EventProxy(object):
     """docstring for EventProxy"""
-    def __init__(self, isDebug=False):
+    def __init__(self, isDebug=False, isShowArgs=True):
         super(EventProxy, self).__init__()
         self.isDebug = isDebug
+        self.isShowArgs = isShowArgs
         self.tmTmEventListener = dict()
+
+    def getClassName(self):
+        return self.__class__.__name__
         
     # 添加事件监听
     def addEventListener(self, eventType, fCallback):
@@ -61,7 +65,7 @@ class EventProxy(object):
     # 派发事件
     def dispatchEvent(self, eventType, *args):
         if self.isDebug:
-            py3_common.Logging.debug2('EventProxy dispatchEvent:', eventType, args)
+            py3_common.Logging.debug2(self.getClassName(),'dispatchEvent:', eventType, args if self.isShowArgs else '')
         tmTmEventListener = self.tmTmEventListener
         if not eventType in tmTmEventListener:
             return

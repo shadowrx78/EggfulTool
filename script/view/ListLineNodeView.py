@@ -113,7 +113,7 @@ class ListLineNodeView(Toplevel):
         # 区分大小写
         self.checkbuttonNoIgnorecaseVar = IntVar()
         self.checkbuttonNoIgnorecaseVar.set(1 if GlobalValue.SEARCH_VIEW_NO_IGNORECASE else 0)
-        checkbuttonNoIgnorecase = Checkbutton(frameMiddle, text=str('区分大小写'), variable=self.checkbuttonNoIgnorecaseVar, command=lambda :self.onNoIgnorecaseVarChange())
+        checkbuttonNoIgnorecase = Checkbutton(frameMiddle, text=str('区分大小写'), variable=self.checkbuttonNoIgnorecaseVar, command=lambda :self.onNoIgnorecaseVarChange(), takefocus=0)
         checkbuttonNoIgnorecase.grid(row=1, column=0, sticky='w')
         self.checkbuttonNoIgnorecase = checkbuttonNoIgnorecase
         configureTkObjectColor(checkbuttonNoIgnorecase)
@@ -133,7 +133,7 @@ class ListLineNodeView(Toplevel):
         self.frameBottom = frameBottom
         frameBottom.columnconfigure(0,weight=1)
         if True:
-            buttonCancel = Button(frameBottom, text='关闭', width=10, command=self.onBtnClose)
+            buttonCancel = Button(frameBottom, text='关闭', width=10, command=self.onBtnClose, takefocus=0)
             buttonCancel.grid(row=0, column=0)
             configureTkObjectColor(buttonCancel)
 

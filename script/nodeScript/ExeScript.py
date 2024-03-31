@@ -97,12 +97,15 @@ def onBtnClick(data=None):
         if DEBUG:
             py3_common.Logging.debug(os.path.abspath(path_))
         oldWorkPath = os.getcwd()
+        pathDisk = getDiskNameByPath(path_)
         os.chdir(os.path.abspath(os.path.dirname(path_)))
         try:
             os.startfile(os.path.abspath(path_))
         except Exception as e:
             raise e
         finally:
+            if pathDisk != None:
+                os.chdir(pathDisk + ':\\')
             os.chdir(oldWorkPath)
     else:
         messagebox.showerror('错误','文件路径不存在')
@@ -121,13 +124,24 @@ def onDrop(data=None, tlFile=None):
         if DEBUG:
             py3_common.Logging.debug(cmd)
         oldWorkPath = os.getcwd()
+        pathDisk = getDiskNameByPath(path_)
         os.chdir(os.path.abspath(os.path.dirname(path_)))
         try:
             subprocess.Popen(cmd, shell=True)
         except Exception as e:
             raise e
         finally:
+            if pathDisk != None:
+                os.chdir(pathDisk + ':\\')
             os.chdir(oldWorkPath)
+
+# 根据路径获取盘符
+def getDiskNameByPath(path):
+    match = re.search(r':', path)
+    if not match:
+        return None
+    diskName = path[:match.start()]
+    return diskName
 
 def getPath(data=None, tmExUi=None):
     if DEBUG:
