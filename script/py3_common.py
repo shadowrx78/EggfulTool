@@ -325,7 +325,7 @@ def loadJsonToList(path, ignoreLog=False, isOrdered=True):
             config_List = json.loads(fileContent, object_pairs_hook=OrderedDict)
         else:
             config_List = json.loads(fileContent)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
         # raise e
         pass
     return config_List
@@ -1269,6 +1269,50 @@ def getEditorText(editor):
         return getEntryText(editor)
     elif className == 'Text':
         return getTextText(editor)
+
+# 获取光标位置
+def getEditorCursorPos(editor):
+    className = editor.__class__.__name__
+    line, column = None, None
+    lineEnd, columnEnd = None, None
+    if className == 'Entry':
+        column = editor.index('insert')
+        line = 1
+        try:
+            # 处理选中
+            p1, p2 = editor.index('sel.first'), editor.index('sel.last')
+            column = p1
+            columnEnd = p2
+            lineEnd = 1
+        except Exception as e:
+            # raise e
+            pass
+    elif className == 'Text':
+        lcStr = editor.index('insert')
+        tlStr = lcStr.split('.')
+        try:
+            # 处理选中
+            p1, p2 = editor.index('sel.first'), editor.index('sel.last')
+            tl1, tl2 = p1.split('.'), p2.split('.')
+            line, column = int(tl1[0]), int(tl1[1])
+            lineEnd, columnEnd = int(tl2[0]), int(tl2[1])
+        except Exception as e:
+            # raise e
+            pass
+        if (line == None or column == None) and len(tlStr) > 1:
+            line = int(tlStr[0])
+            column = int(tlStr[1])
+    return line, column, lineEnd, columnEnd
+
+# 设置光标位置
+def setEditorCursorPos(editor, line, column):
+    if line == None or column == None:
+        return
+    className = editor.__class__.__name__
+    if className == 'Entry':
+        editor.icursor(column)
+    elif className == 'Text':
+        editor.mark_set('insert', '%d.%d' % (line, column))
 
 def _tkEditorCopy(editor, event=None):
     editor.event_generate("<<Copy>>")

@@ -31,6 +31,7 @@ from . import tkVirtualListHelper
 
 from . import py3_common
 from ctypes import windll
+import pyperclip
 
 # from . import EventProxy
 from .EventProxy import *
@@ -55,6 +56,7 @@ UI_MODE = UiModeEnum.Normal
 
 # 主窗口
 INIT_WINDOW = None
+INIT_WINDOW_GUI = None
 
 # 事件代理
 EVENT_PROXY = None
@@ -85,8 +87,10 @@ class StyleEnum:
 
 # 默认颜色
 TM_BTN_TYPE_COLOR_DEFAULT = {
-    'common':{'bgColor':BG_COLOR, 'fgColor':'black', 'selectColor':'light sky blue', 'canvasBgColor':BG_COLOR, 'btnDisabledFgColor':'gray30', 'btnFgColor':'blue',
-        'tkEntry':{'bgColor':'white', 'selectBgColor':'#2478d5', 'selectFgColor':'white', 'disabledBgColor':BG_COLOR, 'disabledFgColor':'gray30'},
+    'common':{'bgColor':BG_COLOR, 'fgColor':'black', 'selectColor':'light sky blue', 'canvasBgColor':BG_COLOR, 'btnDisabledFgColor':'gray30', 'btnFgColor':'blue', 'selectFgColor':'black',
+        'tkEntry':{'bgColor':'white', 'selectBgColor':'#2478d5', 'selectFgColor':'white', 'disabledBgColor':BG_COLOR, 'disabledFgColor':'gray30', 'insertbackground':'black'},
+        'tkMenu':{'selectBgColor':'DodgerBlue3', 'selectFgColor':'white'},
+        'ttkProgressbar':{'background':'#14ab14'},
         'ttkScrollbar':{'background':{'normal':'gray87', 'active':'gray80', 'disabled':BG_COLOR},
                         'troughcolor':BG_COLOR,
                         'arrowcolor':{'normal':'gray30', 'disabled':'gray70'}},
@@ -115,8 +119,10 @@ TM_BTN_TYPE_COLOR_BLACK = {
     "exe":{"typeBgColor":"#369645", "typeTextColor":"#e7e7e7"},
     "cmd":{"typeBgColor":"#b45227", "typeTextColor":"#e7e7e7"},
     "line":{"bgColor":"#424242", "fgColor":"#e7e7e7", "selectFgColor":"#000000"},
-    "common":{"bgColor":"#303030", "fgColor":"#e7e7e7", "selectColor":"#ffa74f", "canvasBgColor":"#424242", "btnDisabledFgColor":"#a4a4a4", "btnFgColor":"#ffa74f",
-            "tkEntry":{"bgColor":"#535353", "selectBgColor":"#ffa74f", "selectFgColor":"#000000", "disabledBgColor":"#666666", "disabledFgColor":"#a4a4a4"},
+    "common":{"bgColor":"#303030", "fgColor":"#e7e7e7", "selectColor":"#ffa74f", "canvasBgColor":"#303030", "btnDisabledFgColor":"#a4a4a4", "btnFgColor":"#ffa74f", "selectFgColor":"black",
+            "tkEntry":{"bgColor":"#535353", "selectBgColor":"#ffa74f", "selectFgColor":"#000000", "disabledBgColor":"#666666", "disabledFgColor":"#a4a4a4", "insertbackground":"white"},
+            'tkMenu':{'selectBgColor':'#ffa74f', 'selectFgColor':'black'},
+            'ttkProgressbar':{'background':'#14ab14'},
             "ttkScrollbar":{"troughcolor":"#4a4a4a",
                 "background":{"active":"#787878", "disabled":"#787878", "normal":"#646464"},
                 "arrowcolor":{"disabled":"#ababab"}},
@@ -362,6 +368,12 @@ def showError(self, *args):
     if VIEW_STACK != None and len(VIEW_STACK) > 0:
         parent = VIEW_STACK[-1]
     py3_common.messageboxShowerror('错误', errStr, parent=parent)
+
+
+# 复制文本到剪贴板
+def copyStr2Clipboard(str_):
+    if str_ != None and isinstance(str_, str):
+        pyperclip.copy(str_)
 
 
 # 文件修改时间转日期字符串
@@ -643,10 +655,12 @@ def configureTkObjectColor(tkObject):
     if className == 'Entry':
         tkObject.configure(bg=fc_(['common', 'tkEntry', 'bgColor']), fg=fc_(['common', 'fgColor']),
                     selectbackground=fc_(['common', 'tkEntry', 'selectBgColor']), selectforeground=fc_(['common', 'tkEntry', 'selectFgColor']),
-                    disabledbackground=fc_(['common', 'tkEntry', 'disabledBgColor']), disabledforeground=fc_(['common', 'tkEntry', 'disabledFgColor']))
+                    disabledbackground=fc_(['common', 'tkEntry', 'disabledBgColor']), disabledforeground=fc_(['common', 'tkEntry', 'disabledFgColor']),
+                    insertbackground=fc_(['common', 'tkEntry', 'insertbackground']))
     elif className == 'Text':
         tkObject.configure(bg=fc_(['common', 'tkEntry', 'bgColor']), fg=fc_(['common', 'fgColor']),
-                    selectbackground=fc_(['common', 'tkEntry', 'selectBgColor']), selectforeground=fc_(['common', 'tkEntry', 'selectFgColor']))
+                    selectbackground=fc_(['common', 'tkEntry', 'selectBgColor']), selectforeground=fc_(['common', 'tkEntry', 'selectFgColor']),
+                    insertbackground=fc_(['common', 'tkEntry', 'insertbackground']))
     elif className == 'Label':
         tkObject.configure(bg=fc_(['common', 'bgColor']), fg=fc_(['common', 'fgColor']))
     elif className == 'Frame' or className == 'Toplevel' or className == 'Panedwindow':
@@ -926,3 +940,103 @@ if not os.path.isfile(NODES_CONFIG_JSON_PATH):
 if not os.path.isfile(SETTING_CONFIG_JSON_PATH):
     py3_common.Logging.info(u'没有找到设定配置json，初始化')
     createSettingConfigJson()
+
+
+
+########界面栈相关
+def initViewNeedGrabEventListen():
+    addEventListener(EventType.Event_ViewShow, onEvent_ViewShow)
+    addEventListener(EventType.Event_ViewClose, onEvent_ViewClose)
+    addEventListener(EventType.Event_ViewFocusIn, onEvent_ViewFocusIn)
+    addEventListener(EventType.Event_ViewNeedGrabShow, onEvent_ViewNeedGrabShow)
+    addEventListener(EventType.Event_ViewNeedGrabClose, onEvent_ViewNeedGrabClose)
+
+def onEvent_ViewShow(view):
+    if VIEW_STACK == None:
+        return
+    VIEW_STACK.append(view)
+
+def onEvent_ViewClose(view):
+    if VIEW_STACK == None:
+        return
+    if len(VIEW_STACK) > 0:
+        tlDelIndex = list()
+        for i in range(0,len(VIEW_STACK)):
+            if view == VIEW_STACK[i]:
+                tlDelIndex.append(i)
+        for i in range(len(tlDelIndex)-1,-1,-1):
+            del VIEW_STACK[tlDelIndex[i]]
+        # 重设焦点
+        def fHelper(v):
+            v.focus_force()
+            try:
+                v.reFocusOldFocusWidget()
+            except Exception as e:
+                raise e
+        if len(VIEW_STACK) > 0:
+            view = VIEW_STACK[len(VIEW_STACK)-1]
+            view.after(1, lambda v=view: fHelper(v))
+        else:
+            # 没弹窗了定焦点到主窗口
+            INIT_WINDOW_GUI.after(1, lambda v=INIT_WINDOW_GUI: fHelper(v))
+
+def onEvent_ViewFocusIn(view):
+    if VIEW_STACK == None:
+        return
+    if len(VIEW_STACK) > 0:
+        if VIEW_STACK[len(VIEW_STACK)-1] == view:
+            return
+        tlDelIndex = list()
+        for i in range(0,len(VIEW_STACK)):
+            if view == VIEW_STACK[i]:
+                tlDelIndex.append(i)
+        for i in range(len(tlDelIndex)-1,-1,-1):
+            del VIEW_STACK[tlDelIndex[i]]
+    VIEW_STACK.append(view)
+
+def hasSameClassView(view):
+    if VIEW_STACK == None or len(VIEW_STACK) == 0:
+        return False
+    viewClassName = view.__class__.__name__
+    for i in range(0,len(VIEW_STACK)):
+        cName = VIEW_STACK[i].__class__.__name__
+        if viewClassName == cName:
+            return True
+    return False
+
+def onEvent_ViewNeedGrabShow(view):
+    if VIEW_NEED_GRAB_STACK == None:
+        return
+    VIEW_NEED_GRAB_STACK.append(view)
+    # 锁定焦点
+    view.grab_set()
+
+def onEvent_ViewNeedGrabClose(view):
+    if VIEW_NEED_GRAB_STACK == None:
+        return
+    if len(VIEW_NEED_GRAB_STACK) > 0:
+        tlDelIndex = list()
+        for i in range(0,len(VIEW_NEED_GRAB_STACK)):
+            if view == VIEW_NEED_GRAB_STACK[i]:
+                tlDelIndex.append(i)
+        for i in range(len(tlDelIndex)-1,-1,-1):
+            del VIEW_NEED_GRAB_STACK[tlDelIndex[i]]
+    if len(VIEW_NEED_GRAB_STACK) > 0:
+        # 锁定焦点
+        VIEW_NEED_GRAB_STACK[len(VIEW_NEED_GRAB_STACK)-1].grab_set()
+
+initViewNeedGrabEventListen()
+
+
+
+
+
+########其他事件相关
+def initViewOtherEventListen():
+    addEventListener(EventType.Event_SettingColorChange, onEvent_SettingColorChange)
+
+# 风格改变
+def onEvent_SettingColorChange():
+    configureTtkStyle()
+
+initViewOtherEventListen()
