@@ -519,7 +519,7 @@ class NodeSettingView(Toplevel):
     def pasteNodeConfig(self):
         try:
             self.tempData = json.loads(self.clipboard_get(), object_pairs_hook=OrderedDict)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
             # raise e
             py3_common.Logging.error(e)
             return False
