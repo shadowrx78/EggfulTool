@@ -14,8 +14,9 @@ class TkThemeHelper(object):
     def __init__(self):
         super(TkThemeHelper, self).__init__()
         self.tlEventHandle = list()
+        # 坑比PanedWindow 2钟类名获取方式大小写不一样
         self.tlRawTkObjName = ['Entry', 'Text', 'Label', 'Frame',
-        'Radiobutton', 'Button', 'Canvas', 'Checkbutton', 'Scale', 'Listbox', 'Menu', 'Toplevel', 'Panedwindow']
+        'Radiobutton', 'Button', 'Canvas', 'Checkbutton', 'Scale', 'Listbox', 'Menu', 'Toplevel', 'PanedWindow']
         self.tlTkObj = set()
         self.tlTkExObj = set()
         self.initEventListen()

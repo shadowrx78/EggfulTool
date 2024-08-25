@@ -108,18 +108,15 @@ TM_BTN_TYPE_COLOR_DEFAULT = {
     'folder':{'typeBgColor':'pink', 'typeTextColor':'black'},
     'exe':{'typeBgColor':'yellow', 'typeTextColor':'black'},
     'cmd':{'typeBgColor':'gray38', 'typeTextColor':'white'},
-    'create':{'bgColor':'gray87', 'fgColor':'blue'}
+    'create':{'bgColor':'gray87', 'fgColor':'blue'},
+    'sheet':{'theme':'light blue', 'highlightBgColor':'#d6effe', 'highlightFgColor':'black', 'highlightBgColor2':'#fefed6', 'highlightFgColor2':'black'}
 }
 # 白色风格默认颜色
 TM_BTN_TYPE_COLOR = py3_common.deep_copy_dict(TM_BTN_TYPE_COLOR_DEFAULT)
 
 # 黑色风格默认颜色
 TM_BTN_TYPE_COLOR_BLACK = {
-    "folder":{"typeBgColor":"#0e79c9", "typeTextColor":"#e7e7e7"},
-    "exe":{"typeBgColor":"#369645", "typeTextColor":"#e7e7e7"},
-    "cmd":{"typeBgColor":"#b45227", "typeTextColor":"#e7e7e7"},
-    "line":{"bgColor":"#424242", "fgColor":"#e7e7e7", "selectFgColor":"#000000"},
-    "common":{"bgColor":"#303030", "fgColor":"#e7e7e7", "selectColor":"#ffa74f", "canvasBgColor":"#303030", "btnDisabledFgColor":"#a4a4a4", "btnFgColor":"#ffa74f", "selectFgColor":"black",
+    "common":{"bgColor":"#303030", "fgColor":"#e7e7e7", "selectColor":"#ffa74f", "canvasBgColor":"#424242", "btnDisabledFgColor":"#a4a4a4", "btnFgColor":"#ffa74f", "selectFgColor":"black",
             "tkEntry":{"bgColor":"#535353", "selectBgColor":"#ffa74f", "selectFgColor":"#000000", "disabledBgColor":"#666666", "disabledFgColor":"#a4a4a4", "insertbackground":"white"},
             'tkMenu':{'selectBgColor':'#ffa74f', 'selectFgColor':'black'},
             'ttkProgressbar':{'background':'#14ab14'},
@@ -132,11 +129,16 @@ TM_BTN_TYPE_COLOR_BLACK = {
                         'troughcolor':BG_COLOR,
                         'arrowcolor':{'normal':'gray30', 'disabled':'gray70'},
                         }},
+    "line":{"bgColor":"#424242", "fgColor":"#e7e7e7", "selectFgColor":"#000000"},
     "btn":{"bgColor":"#303030", "btnBgColor":"#232323", "btnFgColor":"#e7e7e7", "markDropBgColor":"#7b7bff",
         "markDropFgColor":"#e7e7e7", "markBookmarkFgColor":"#e7e7e7", "markBookmarkBgColor":"#6d6b41",
         "markAskExeBgColor":"#654141", "markAskExeFgColor":"#e7e7e7",
         'typeDisableBgColor':'#646464', 'typeDisableTextColor':'#c7c7c7'},
-    "create":{"fgColor":"#009d00", "bgColor":"#303030"}
+    "folder":{"typeBgColor":"#0e79c9", "typeTextColor":"#e7e7e7"},
+    "exe":{"typeBgColor":"#369645", "typeTextColor":"#e7e7e7"},
+    "cmd":{"typeBgColor":"#b45227", "typeTextColor":"#e7e7e7"},
+    "create":{"fgColor":"#009d00", "bgColor":"#303030"},
+    'sheet':{'theme':'black', 'highlightBgColor':'#d56a00', 'highlightFgColor':'black', 'highlightBgColor2':'#a8a8ff', 'highlightFgColor2':'black'}
 }
 
 # 默认风格dict
@@ -216,6 +218,10 @@ TEMP_NODE_LIST = None
 ROOT_THREAD_POOL_EXECUTOR = None
 # 搜索界面区分大小写
 SEARCH_VIEW_NO_IGNORECASE = False
+# 所有弹窗界面栈，用于获取当前顶部界面
+VIEW_STACK = None
+# 需要锁定焦点的界面栈，用于多级弹窗锁定焦点
+VIEW_NEED_GRAB_STACK = None
 
 
 
@@ -646,7 +652,7 @@ def setColorWithTlKey(tlKey, color):
             if not tlKey[i] in temp:
                 temp[tlKey[i]] = dict()
             temp = temp[tlKey[i]]
-    saveProjectSetting()
+    # saveProjectSetting()
 
 def configureTkObjectColor(tkObject):
     className = tkObject.winfo_class()
@@ -682,7 +688,7 @@ def configureTkObjectColor(tkObject):
                             selectforeground=fc_(['common', 'tkEntry', 'selectFgColor']))
     elif className == 'Menu':
         tkObject.configure(bg=fc_(['common', 'bgColor']), fg=fc_(['common', 'fgColor']),
-                            # selectcolor=fc_(['common', 'bgColor']),
+                            selectcolor=fc_(['common', 'fgColor']),
                             activebackground=fc_(['common', 'tkMenu', 'selectBgColor']), activeforeground=fc_(['common', 'tkMenu', 'selectFgColor']), disabledforeground=fc_(['common', 'btnDisabledFgColor']))
 
 # 改变tk扩展类颜色
@@ -691,6 +697,10 @@ def configureExTkObjectColor(tkObject):
     fc_ = getColorWithTlKeyAutoDefault
     if className == 'Sheet':
         tkObject.change_theme(theme=fc_(['sheet', 'theme']))
+    elif className == 'VirtualListFrame':
+        tkObject.configure(bg=fc_(['common', 'canvasBgColor']))
+        tkObject.virtualListCanvas.configure(bg=fc_(['common', 'canvasBgColor']))
+        tkObject.virtualListCanvas.scrollFrame.configure(bg=fc_(['common', 'canvasBgColor']))
 
 # 改变ttk风格颜色
 def configureTtkStyle(rootTk = None):
@@ -835,6 +845,14 @@ def getSettingKey(data):
     elif 'typeStr' in data:
         return data['typeStr']
     return None
+
+
+# 设置主界面透明度
+def setInitWindowAlpha(alpha=None):
+    if alpha == None:
+        alpha = WINDOW_ALPHA
+    if INIT_WINDOW:
+        INIT_WINDOW.attributes("-alpha", alpha/100.0)
 
 
 

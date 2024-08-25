@@ -11,6 +11,12 @@ class EventType:
     Event_SettingOptionsChange = 'Event_SettingOptionsChange'
     Event_NodeChange = 'Event_NodeChange'
 
+    Event_ViewShow = 'Event_ViewShow'
+    Event_ViewClose = 'Event_ViewClose'
+    Event_ViewFocusIn = 'Event_ViewFocusIn'
+    Event_ViewNeedGrabShow = 'Event_ViewNeedGrabShow'
+    Event_ViewNeedGrabClose = 'Event_ViewNeedGrabClose'
+
 
 # 事件代理
 class EventProxy(object):

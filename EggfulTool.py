@@ -38,7 +38,9 @@ from ctypes import windll
 from script import GlobalValue
 from script import SysTrayIcon
 from script.GlobalValue import *
+from script.UndoRedoHelper import *
 from script.EventProxy import *
+from script.TkThemeHelper import *
 
 from script.node.LineNode import *
 from script.node.BtnNode import *
@@ -46,7 +48,7 @@ from script.node.CreateNode import *
 
 from script.view.ListLineNodeView import *
 from script.view.NodeSettingView import *
-from script.view.RootSettingView import *
+from script.view.ViewRootSetting import *
 
 # import win32ui
 # import win32gui
@@ -56,7 +58,7 @@ from script.view.RootSettingView import *
 
 PROGRAM_TITLE_NAME = '有点卵用工具'
 PROGRAM_NAME = 'EggfulTool'
-PROGRAM_VERSION = '1.0.7α1'
+PROGRAM_VERSION = '1.0.7α2'
 
 TL_UI_MODE_DATA = [
     {'name':'通常', 'key':UiModeEnum.Normal},
@@ -162,7 +164,24 @@ class MainGui(Frame):
         self.setInitWindow()
 
     def __del__(self):
-        py3_common.Logging.info2('MainGui __del__')
+        py3_common.Logging.info2(self.getClassName(),'__del__')
+
+    def getClassName(self):
+        return self.__class__.__name__
+
+
+    def markOldFocusWidget(self):
+        widget = None
+        try:
+            widget = self.focus_get()
+        except Exception as e:
+            raise e
+        self.oldFocusWidget = widget
+
+    def reFocusOldFocusWidget(self):
+        if self.oldFocusWidget:
+            self.oldFocusWidget.focus_set()
+            self.oldFocusWidget = None
 
 
     #设置窗口
@@ -179,7 +198,8 @@ class MainGui(Frame):
         #self.initWindow.geometry('320x160+10+10')                         #290 160为窗口大小，+10 +10 定义窗口弹出时的默认展示位置
         self.initWindow.geometry('1080x640')
         # self.initWindow["bg"] = "pink"                                    #窗口背景色，其他背景色见：blog.csdn.net/chl0000/article/details/7657887
-        self.initWindow.attributes("-alpha", GlobalValue.WINDOW_ALPHA/100.0)                          #虚化，值越小虚化程度越高
+        # self.initWindow.attributes("-alpha", GlobalValue.WINDOW_ALPHA/100.0)                          #虚化，值越小虚化程度越高
+        setInitWindowAlpha()
         self.initWindow.minsize(600, 400)                                  #限制窗口最小大小
         # self.initWindow.wm_attributes('-topmost',1)       #置顶
 
@@ -194,14 +214,19 @@ class MainGui(Frame):
 
         self.dnd = TkDnD(self.initWindow)
 
+        self.tkThemeHelper = TkThemeHelper()
+        self.tkThemeHelper.addTkObj(self)
+
         # self['bg'] = 'black'
         # self.configure(bg='black')
         self.grid(row=0,column=0,sticky='nsew')
 
         # ---------菜单栏---------
         self.mbar = Menu(self.initWindow)                      #定义顶级菜单实例
+        self.tkThemeHelper.addTkObj(self.mbar)
         self.menuFile = Menu(self.mbar, tearoff=False)             #在顶级菜单下创建菜单项
         self.mbar.add_cascade(label=' 文件 ',menu=self.menuFile) #添加子菜单
+        self.tkThemeHelper.addTkObj(self.menuFile)
         # FileOption.add_command(label="Open Folder", command=None, accelerator="Ctrl+Shift+O")  
         self.menuFile.add_command(label="从文件导入节点配置",command=self.menuImportNodesConfig)
         self.menuFile.add_command(label="从文件导入设置",command=self.menuImportSetting)
@@ -220,8 +245,10 @@ class MainGui(Frame):
 
         self.menuOptions = Menu(self.mbar, tearoff=False)             #在顶级菜单下创建菜单项
         self.mbar.add_cascade(label=' 选项 ',menu=self.menuOptions) #添加子菜单
+        self.tkThemeHelper.addTkObj(self.menuOptions)
 
         self.menuOptionsAskExe = Menu(self.menuOptions, tearoff=False)
+        self.tkThemeHelper.addTkObj(self.menuOptionsAskExe)
         self.tmIsAskBeforeExecuting = dict()
         for i in range(0,len(GlobalValue.TL_SETTING_KEY)):
             typeStr = GlobalValue.TL_SETTING_KEY[i]
@@ -235,10 +262,11 @@ class MainGui(Frame):
         self.isDisableRightClickEdit.set(1 if GlobalValue.DISABLE_RCLICK_EDIT_NODE else 0)
         self.menuOptions.add_checkbutton(label="禁用右键编辑节点", command=self.menuDisableRightClickEdit, variable=self.isDisableRightClickEdit)
         self.menuOptions.add_separator()                        #添加分割线
-        self.menuOptions.add_command(label="设置",command=self.menuSetting)
+        self.menuOptions.add_command(label="设置",command=self.menuSetting,accelerator='F1')
 
         self.menuDebug = Menu(self.mbar, tearoff=False)             #在顶级菜单下创建菜单项
         self.mbar.add_cascade(label=' 调试 ',menu=self.menuDebug) #添加子菜单
+        self.tkThemeHelper.addTkObj(self.menuDebug)
         self.menuDebug.add_command(label="查看当前环境变量",command=self.menuPrintEnviron)
         self.menuDebug.add_command(label="复制环境变量到剪贴板",command=self.menuCopyEnvironToClipboard)
         if GlobalValue.IS_DEBUG:
@@ -247,6 +275,7 @@ class MainGui(Frame):
 
         self.menuHelp = Menu(self.mbar, tearoff=False)             #在顶级菜单下创建菜单项
         self.mbar.add_cascade(label=' 帮助 ',menu=self.menuHelp) #添加子菜单
+        self.tkThemeHelper.addTkObj(self.menuHelp)
         self.menuHelp.add_command(label="使用说明",command=self.menuShowHelp)
 
         self.initWindow.config(menu=self.mbar)                     #将顶级菜单注册到窗体
@@ -267,6 +296,7 @@ class MainGui(Frame):
         # self.initWindow.bind("<Key>", lambda e: print(f"<Key> {e.char!r}"))
         self.initWindow.bind('<Escape>', self.onKeyBoardEscapeClick)
         # self.initWindow.bind('<Enter>', lambda e:self.initWindow.focus_force())
+        self.initWindow.bind_all('<F1>', lambda e:self.menuSetting())
 
         self.isHideTitleBar = False
         self.initWindow.bind('<F11>', lambda e:self.switchHideTitleBar())
@@ -285,12 +315,14 @@ class MainGui(Frame):
         panelWindow1 = PanedWindow(self, showhandle=False, sashrelief='sunken')
         panelWindow1.grid(row=0,column=0,sticky='nsew')
         self.panelWindow1 = panelWindow1
+        self.tkThemeHelper.addTkObj(panelWindow1)
 
         # ---------主Frame---------
         frameMain = Frame(panelWindow1)
         # frm_left.grid(row=0,column=0,sticky='nsew');#左侧Frame帧拉伸填充
         panelWindow1.add(frameMain, minsize=320)    #限制Frame最小大小
         self.frameMain = frameMain
+        self.tkThemeHelper.addTkObj(frameMain)
 
         frameMain.rowconfigure(0,weight=1)
         # frameMain.rowconfigure(1,weight=1)
@@ -325,19 +357,23 @@ class MainGui(Frame):
             virtualListFrame = tkVirtualListHelper.VirtualListFrame(frameMain, args, relief='groove', bd=3)
             virtualListFrame.grid(row=0,column=0,sticky='nsew')
             self.virtualListFrame = virtualListFrame
+            self.tkThemeHelper.addTkObj(virtualListFrame)
 
         # ---------模式选择---------
         frameMode = Frame(frameMain, relief='flat', bd=3)    #模式底Frame
         frameMode.grid(row=1,column=0,sticky='nsew')
         self.frameMode = frameMode
+        self.tkThemeHelper.addTkObj(frameMode)
         frameMode.rowconfigure(0,weight=1)
         frameMode.columnconfigure(0,weight=1)
         frameModeSelectBtn = Frame(frameMode)
         self.frameModeSelectBtn = frameModeSelectBtn
+        self.tkThemeHelper.addTkObj(frameModeSelectBtn)
         frameModeSelectBtn.grid(column=0, row=0, sticky='ew')
         label = Label(frameModeSelectBtn, text='模式：')
         label.grid(column=0, row=0)
         self.frameModeLabel = label
+        self.tkThemeHelper.addTkObj(label)
         # 模式单选按钮
         self.modeSelectValue = IntVar()
         self.modeSelectValue.set(0)
@@ -348,18 +384,23 @@ class MainGui(Frame):
             btn = Radiobutton(frameModeSelectBtn, text=modeName, variable=self.modeSelectValue, value=x, command=lambda :self.selectUiMode(self.modeSelectValue.get()), takefocus=0)
             btn.grid(column=x+1, row=0)
             self.tlModeRadiobutton.append(btn)
+            self.tkThemeHelper.addTkObj(btn)
         self.initWindow.bind('<Control-Tab>', lambda e:self.selectUiMode((self.modeSelectValue.get() + 1) % len(TL_UI_MODE_DATA)))
 
         # ---------缓存初始化---------
         self.settingView = None
         self.listLineNodeView = None
-        self.rootSettingView = None
+        # self.rootSettingView = None
         self.isInVirtualList = False
         self.inVirtualListMousePos = None
 
-        self.eventNodeChangeHandle = addEventListener(EventType.Event_NodeChange, self.onEventNodeChange)
-        self.eventSettingColorChangeHandle = addEventListener(EventType.Event_SettingColorChange, self.onEventSettingColorChange)
-        self.eventSettingOptionsChangeHandle = addEventListener(EventType.Event_SettingOptionsChange, self.onEventSettingOptionsChange)
+        self.tlEventHandle = list()
+
+        # # 自定义事件
+        # self.eventNodeChangeHandle = addEventListener(EventType.Event_NodeChange, self.onEventNodeChange)
+        # self.eventSettingColorChangeHandle = addEventListener(EventType.Event_SettingColorChange, self.onEventSettingColorChange)
+        # self.eventSettingOptionsChangeHandle = addEventListener(EventType.Event_SettingOptionsChange, self.onEventSettingOptionsChange)
+        self.initEventListen()
 
         self.tkPosX = 0
         self.tkPosY = 0
@@ -370,7 +411,7 @@ class MainGui(Frame):
         self.executor = ThreadPoolExecutor(max_workers=1)   #线程池
         GlobalValue.ROOT_THREAD_POOL_EXECUTOR = self.executor
 
-        self.refreshColors()
+        # self.refreshColors()
         self.updateTlNode()
         # self.test_create_nodes()
 
@@ -388,6 +429,17 @@ class MainGui(Frame):
             window_class_name=PROGRAM_NAME,
             )
 
+        self.tkThemeHelper.update()
+
+    def initEventListen(self):
+        self.removeAllEventListen()
+        self.tlEventHandle.append(addEventListener(EventType.Event_NodeChange, self.onEvent_NodeChange))
+        self.tlEventHandle.append(addEventListener(EventType.Event_SettingOptionsChange, self.onEvent_SettingOptionsChange))
+        self.tlEventHandle.append(addEventListener(EventType.Event_SettingColorChange, self.onEvent_SettingColorChange))
+
+    def removeAllEventListen(self):
+        removeTlEventListener(self.tlEventHandle)
+        self.tlEventHandle = list()
 
 
 
@@ -440,32 +492,35 @@ class MainGui(Frame):
         refreshProjectSetting()
         # 弹出初始化错误提示
         showTlInitErrorMsg()
-        self.refreshColors()
+        # self.refreshColors()
         self.refreshOptions()
         self.updateTlNode()
 
     # 设置
     def menuSetting(self):
-        if self.rootSettingView:
-            try:
-                self.rootSettingView.destroy()
-            except Exception as e:
-                # raise e
-                pass
-            self.rootSettingView = None
+        py3_common.Logging.debug(self.getClassName(),'menuSetting')
+        view = ViewRootSetting(self)
 
-        # 弹框用TopLevel
-        # py3_common.Logging.debug3(index)
-        view = RootSettingView(self.initWindow, self)
-        # view.wm_attributes('-topmost',1)
-        # view.minsize(300, 200)
-        self.rootSettingView = view
-        view.after(1, lambda: view.focus_force())
+        # if self.rootSettingView:
+        #     try:
+        #         self.rootSettingView.destroy()
+        #     except Exception as e:
+        #         # raise e
+        #         pass
+        #     self.rootSettingView = None
 
-        tkCenter(view)
+        # # 弹框用TopLevel
+        # # py3_common.Logging.debug3(index)
+        # view = RootSettingView(self.initWindow, self)
+        # # view.wm_attributes('-topmost',1)
+        # # view.minsize(300, 200)
+        # self.rootSettingView = view
+        # view.after(1, lambda: view.focus_force())
 
-        # 锁定焦点
-        view.grab_set()
+        # tkCenter(view)
+
+        # # 锁定焦点
+        # view.grab_set()
 
     # 使用说明
     def menuShowHelp(self):
@@ -832,14 +887,6 @@ ctrl+tab：切换模式
         #     GlobalValue.FORCE_SHOW_SELECT = True
         self.virtualListFrame.virtualListCanvas.refreshNodeByIndex(index, ui=ui, ex=ex)
 
-    def onEventNodeChange(self, *args):
-        # if GlobalValue.IS_DEBUG:
-        #     py3_common.Logging.debug2('MainGui onEventNodeChange', args)
-        if args != None and len(args) > 0:
-            self.refreshNodeByIndex(*args)
-        else:
-            self.updateTlNode()
-
     def addCreateNodeToTlNode(self):
         # global TEMP_NODE_LIST
         createNodeData = {'nodeType':'Create'}
@@ -1052,123 +1099,123 @@ ctrl+tab：切换模式
         self.initWindow.config(menu=self.mbar if not self.isHideTitleBar else '')
         self.initWindow.after(1, lambda :self.initWindow.geometry('+%d+%d' % (nx, ny)))
 
-    def refreshColors(self):
-        # print(getColorWithTlKeyAutoDefault(['common', 'bgColor']))
-        # windows无效
-        # self.mbar.configure(background='black', fg='white', activebackground='#004c99', activeforeground='white')
-        fc_ = getColorWithTlKeyAutoDefault
-        self.configure(bg=fc_(['common', 'bgColor']))
-        configureTkObjectColor(self)
-        # self.panelWindow1.configure(bg=fc_(['common', 'bgColor']))
-        configureTkObjectColor(self.panelWindow1)
-        # self.frameMain.configure(bg=fc_(['common', 'bgColor']))
-        configureTkObjectColor(self.frameMain)
-        # self.frameMode.configure(bg=fc_(['common', 'bgColor']))
-        configureTkObjectColor(self.frameMode)
-        # self.frameModeSelectBtn.configure(bg=fc_(['common', 'bgColor']))
-        configureTkObjectColor(self.frameModeSelectBtn)
-        # self.frameModeLabel.configure(bg=fc_(['common', 'bgColor']), fg=fc_(['common', 'fgColor']))
-        configureTkObjectColor(self.frameModeLabel)
-        for i in range(0,len(self.tlModeRadiobutton)):
-            # self.tlModeRadiobutton[i].configure(bg=fc_(['common', 'bgColor']), fg=fc_(['common', 'fgColor']), selectcolor=fc_(['common', 'bgColor']), activebackground=fc_(['common', 'bgColor']), activeforeground=fc_(['common', 'fgColor']))
-            configureTkObjectColor(self.tlModeRadiobutton[i])
+    # def refreshColors(self):
+    #     # print(getColorWithTlKeyAutoDefault(['common', 'bgColor']))
+    #     # windows无效
+    #     # self.mbar.configure(background='black', fg='white', activebackground='#004c99', activeforeground='white')
+    #     fc_ = getColorWithTlKeyAutoDefault
+    #     self.configure(bg=fc_(['common', 'bgColor']))
+    #     configureTkObjectColor(self)
+    #     # self.panelWindow1.configure(bg=fc_(['common', 'bgColor']))
+    #     configureTkObjectColor(self.panelWindow1)
+    #     # self.frameMain.configure(bg=fc_(['common', 'bgColor']))
+    #     configureTkObjectColor(self.frameMain)
+    #     # self.frameMode.configure(bg=fc_(['common', 'bgColor']))
+    #     configureTkObjectColor(self.frameMode)
+    #     # self.frameModeSelectBtn.configure(bg=fc_(['common', 'bgColor']))
+    #     configureTkObjectColor(self.frameModeSelectBtn)
+    #     # self.frameModeLabel.configure(bg=fc_(['common', 'bgColor']), fg=fc_(['common', 'fgColor']))
+    #     configureTkObjectColor(self.frameModeLabel)
+    #     for i in range(0,len(self.tlModeRadiobutton)):
+    #         # self.tlModeRadiobutton[i].configure(bg=fc_(['common', 'bgColor']), fg=fc_(['common', 'fgColor']), selectcolor=fc_(['common', 'bgColor']), activebackground=fc_(['common', 'bgColor']), activeforeground=fc_(['common', 'fgColor']))
+    #         configureTkObjectColor(self.tlModeRadiobutton[i])
 
-        self.virtualListFrame.configure(bg=fc_(['common', 'canvasBgColor']))
-        self.virtualListFrame.virtualListCanvas.configure(bg=fc_(['common', 'canvasBgColor']))
-        self.virtualListFrame.virtualListCanvas.scrollFrame.configure(bg=fc_(['common', 'canvasBgColor']))
-        # self.virtualListFrame.canvasVsb.configure(bg='blue')
+    #     self.virtualListFrame.configure(bg=fc_(['common', 'canvasBgColor']))
+    #     self.virtualListFrame.virtualListCanvas.configure(bg=fc_(['common', 'canvasBgColor']))
+    #     self.virtualListFrame.virtualListCanvas.scrollFrame.configure(bg=fc_(['common', 'canvasBgColor']))
+    #     # self.virtualListFrame.canvasVsb.configure(bg='blue')
 
-        tlStyleKeyMark = list()
-        def fc_mark(tlKey):
-            tlStyleKeyMark.append(tlKey)
-            return fc_(tlKey)
+    #     tlStyleKeyMark = list()
+    #     def fc_mark(tlKey):
+    #         tlStyleKeyMark.append(tlKey)
+    #         return fc_(tlKey)
 
-        style = ttk.Style()
-        # py3_common.Logging.debug(ttk.Style.__init__.__code__.co_varnames)
-        # py3_common.Logging.debug(style.configure.__code__.co_varnames)
-        # py3_common.Logging.debug('theme_names', style.theme_names())
-        # ('winnative', 'clam', 'alt', 'default', 'classic', 'vista', 'xpnative')
-        # style.theme_use('clam')
-        style.theme_use('default')
-        style.configure("Vertical.TScrollbar", gripcount=0, borderwidth=0, arrowsize=16,
-                        # sliderrelief='flat',
-                        background=fc_mark(['common', 'ttkScrollbar', 'background', 'normal']),
-                        # foreground='yellow',
-                        # darkcolor="yellow",
-                        # lightcolor="yellow",
-                        troughcolor=fc_mark(['common', 'ttkScrollbar', 'troughcolor']),
-                        # bordercolor="yellow",
-                        # arrowcolor=fc_mark(['common', 'ttkScrollbar', 'arrowcolor', 'normal']))
-                        arrowcolor=fc_mark(['common', 'fgColor']))
-        style.map('Vertical.TScrollbar',
-                    background=[('active', fc_mark(['common', 'ttkScrollbar', 'background', 'active'])),
-                                ('disabled', fc_mark(['common', 'ttkScrollbar', 'background', 'disabled']))],
-                                # ('readonly', fc_mark(['common', 'ttkScrollbar', 'background', 'disabled']))],
-                    # foreground=[('active', 'yellow'), ('disabled', 'yellow')],
-                    arrowcolor=[('disabled', fc_mark(['common', 'ttkScrollbar', 'arrowcolor', 'disabled']))])
-        style.configure("Horizontal.TScrollbar", gripcount=0, borderwidth=0, arrowsize=16,
-                        # sliderrelief='flat',
-                        background=fc_mark(['common', 'ttkScrollbar', 'background', 'normal']),
-                        # foreground='yellow',
-                        # darkcolor="yellow",
-                        # lightcolor="yellow",
-                        troughcolor=fc_mark(['common', 'ttkScrollbar', 'troughcolor']),
-                        # bordercolor="yellow",
-                        # arrowcolor=fc_mark(['common', 'ttkScrollbar', 'arrowcolor', 'normal']))
-                        arrowcolor=fc_mark(['common', 'fgColor']))
-        style.map('Horizontal.TScrollbar',
-                    background=[('active', fc_mark(['common', 'ttkScrollbar', 'background', 'active'])),
-                                ('disabled', fc_mark(['common', 'ttkScrollbar', 'background', 'disabled']))],
-                                # ('readonly', fc_mark(['common', 'ttkScrollbar', 'background', 'disabled']))],
-                    # foreground=[('active', 'yellow'), ('disabled', 'yellow')],
-                    arrowcolor=[('disabled', fc_mark(['common', 'ttkScrollbar', 'arrowcolor', 'disabled']))])
-        style.configure("TCombobox", gripcount=0, borderwidth=1, arrowsize=16, selectborderwidth=0,
-                        # sliderrelief='flat',
-                        # background=fc_mark(['common', 'ttkCombobox', 'background', 'normal']),
-                        background=fc_mark(['common', 'bgColor']),
-                        # foreground=fc_mark(['common', 'ttkCombobox', 'foreground', 'normal']),
-                        foreground=fc_mark(['common', 'fgColor']),
-                        # fieldbackground=fc_mark(['common', 'ttkCombobox', 'fieldbackground', 'normal']),
-                        fieldbackground=fc_mark(['common', 'tkEntry', 'bgColor']),
-                        # darkcolor="yellow",
-                        # lightcolor="yellow",
-                        troughcolor=fc_mark(['common', 'ttkCombobox', 'troughcolor']),
-                        # bordercolor="yellow",
-                        # arrowcolor=fc_mark(['common', 'ttkCombobox', 'arrowcolor', 'normal']))
-                        arrowcolor=fc_mark(['common', 'fgColor']),
-                        selectbackground=fc_mark(['common', 'tkEntry', 'selectBgColor']),
-                        selectforeground=fc_mark(['common', 'tkEntry', 'selectFgColor'])
-                        # selectforeground=fc_mark(['common', 'ttkCombobox', 'selectforeground']),
-                        # insertcolor=fc_mark(['common', 'ttkCombobox', 'insertcolor'])
-                        )
-        self.initWindow.option_add('*TCombobox*Listbox*Background', fc_mark(['common', 'tkEntry', 'bgColor']))
-        self.initWindow.option_add('*TCombobox*Listbox*Foreground', fc_mark(['common', 'fgColor']))
-        self.initWindow.option_add('*TCombobox*Listbox*selectBackground', fc_mark(['common', 'tkEntry', 'selectBgColor']))
-        self.initWindow.option_add('*TCombobox*Listbox*selectForeground', fc_mark(['common', 'tkEntry', 'selectFgColor']))
-        style.map('TCombobox',
-                    background=[('active', fc_mark(['common', 'ttkScrollbar', 'background', 'active'])),
-                                ('disabled', fc_mark(['common', 'ttkCombobox', 'background', 'disabled'])),
-                                # ('readonly', fc_mark(['common', 'ttkCombobox', 'background', 'readonly']))],
-                                ('readonly', fc_mark(['common', 'bgColor']))],
-                    foreground=[('active', fc_mark(['common', 'ttkCombobox', 'foreground', 'active'])),
-                                ('disabled', fc_mark(['common', 'ttkCombobox', 'foreground', 'disabled'])),
-                                # ('readonly', fc_mark(['common', 'ttkCombobox', 'foreground', 'readonly']))],
-                                ('readonly', fc_mark(['common', 'fgColor']))],
-                    fieldbackground=[('active', fc_mark(['common', 'tkEntry', 'bgColor'])),
-                                ('disabled', fc_mark(['common', 'tkEntry', 'disabledBgColor'])),
-                                # ('readonly', fc_mark(['common', 'ttkCombobox', 'fieldbackground', 'readonly']))],
-                                ('readonly', fc_mark(['common', 'tkEntry', 'bgColor']))],
-                    arrowcolor=[('disabled', fc_mark(['common', 'ttkScrollbar', 'arrowcolor', 'disabled']))])
+    #     style = ttk.Style()
+    #     # py3_common.Logging.debug(ttk.Style.__init__.__code__.co_varnames)
+    #     # py3_common.Logging.debug(style.configure.__code__.co_varnames)
+    #     # py3_common.Logging.debug('theme_names', style.theme_names())
+    #     # ('winnative', 'clam', 'alt', 'default', 'classic', 'vista', 'xpnative')
+    #     # style.theme_use('clam')
+    #     style.theme_use('default')
+    #     style.configure("Vertical.TScrollbar", gripcount=0, borderwidth=0, arrowsize=16,
+    #                     # sliderrelief='flat',
+    #                     background=fc_mark(['common', 'ttkScrollbar', 'background', 'normal']),
+    #                     # foreground='yellow',
+    #                     # darkcolor="yellow",
+    #                     # lightcolor="yellow",
+    #                     troughcolor=fc_mark(['common', 'ttkScrollbar', 'troughcolor']),
+    #                     # bordercolor="yellow",
+    #                     # arrowcolor=fc_mark(['common', 'ttkScrollbar', 'arrowcolor', 'normal']))
+    #                     arrowcolor=fc_mark(['common', 'fgColor']))
+    #     style.map('Vertical.TScrollbar',
+    #                 background=[('active', fc_mark(['common', 'ttkScrollbar', 'background', 'active'])),
+    #                             ('disabled', fc_mark(['common', 'ttkScrollbar', 'background', 'disabled']))],
+    #                             # ('readonly', fc_mark(['common', 'ttkScrollbar', 'background', 'disabled']))],
+    #                 # foreground=[('active', 'yellow'), ('disabled', 'yellow')],
+    #                 arrowcolor=[('disabled', fc_mark(['common', 'ttkScrollbar', 'arrowcolor', 'disabled']))])
+    #     style.configure("Horizontal.TScrollbar", gripcount=0, borderwidth=0, arrowsize=16,
+    #                     # sliderrelief='flat',
+    #                     background=fc_mark(['common', 'ttkScrollbar', 'background', 'normal']),
+    #                     # foreground='yellow',
+    #                     # darkcolor="yellow",
+    #                     # lightcolor="yellow",
+    #                     troughcolor=fc_mark(['common', 'ttkScrollbar', 'troughcolor']),
+    #                     # bordercolor="yellow",
+    #                     # arrowcolor=fc_mark(['common', 'ttkScrollbar', 'arrowcolor', 'normal']))
+    #                     arrowcolor=fc_mark(['common', 'fgColor']))
+    #     style.map('Horizontal.TScrollbar',
+    #                 background=[('active', fc_mark(['common', 'ttkScrollbar', 'background', 'active'])),
+    #                             ('disabled', fc_mark(['common', 'ttkScrollbar', 'background', 'disabled']))],
+    #                             # ('readonly', fc_mark(['common', 'ttkScrollbar', 'background', 'disabled']))],
+    #                 # foreground=[('active', 'yellow'), ('disabled', 'yellow')],
+    #                 arrowcolor=[('disabled', fc_mark(['common', 'ttkScrollbar', 'arrowcolor', 'disabled']))])
+    #     style.configure("TCombobox", gripcount=0, borderwidth=1, arrowsize=16, selectborderwidth=0,
+    #                     # sliderrelief='flat',
+    #                     # background=fc_mark(['common', 'ttkCombobox', 'background', 'normal']),
+    #                     background=fc_mark(['common', 'bgColor']),
+    #                     # foreground=fc_mark(['common', 'ttkCombobox', 'foreground', 'normal']),
+    #                     foreground=fc_mark(['common', 'fgColor']),
+    #                     # fieldbackground=fc_mark(['common', 'ttkCombobox', 'fieldbackground', 'normal']),
+    #                     fieldbackground=fc_mark(['common', 'tkEntry', 'bgColor']),
+    #                     # darkcolor="yellow",
+    #                     # lightcolor="yellow",
+    #                     troughcolor=fc_mark(['common', 'ttkCombobox', 'troughcolor']),
+    #                     # bordercolor="yellow",
+    #                     # arrowcolor=fc_mark(['common', 'ttkCombobox', 'arrowcolor', 'normal']))
+    #                     arrowcolor=fc_mark(['common', 'fgColor']),
+    #                     selectbackground=fc_mark(['common', 'tkEntry', 'selectBgColor']),
+    #                     selectforeground=fc_mark(['common', 'tkEntry', 'selectFgColor'])
+    #                     # selectforeground=fc_mark(['common', 'ttkCombobox', 'selectforeground']),
+    #                     # insertcolor=fc_mark(['common', 'ttkCombobox', 'insertcolor'])
+    #                     )
+    #     self.initWindow.option_add('*TCombobox*Listbox*Background', fc_mark(['common', 'tkEntry', 'bgColor']))
+    #     self.initWindow.option_add('*TCombobox*Listbox*Foreground', fc_mark(['common', 'fgColor']))
+    #     self.initWindow.option_add('*TCombobox*Listbox*selectBackground', fc_mark(['common', 'tkEntry', 'selectBgColor']))
+    #     self.initWindow.option_add('*TCombobox*Listbox*selectForeground', fc_mark(['common', 'tkEntry', 'selectFgColor']))
+    #     style.map('TCombobox',
+    #                 background=[('active', fc_mark(['common', 'ttkScrollbar', 'background', 'active'])),
+    #                             ('disabled', fc_mark(['common', 'ttkCombobox', 'background', 'disabled'])),
+    #                             # ('readonly', fc_mark(['common', 'ttkCombobox', 'background', 'readonly']))],
+    #                             ('readonly', fc_mark(['common', 'bgColor']))],
+    #                 foreground=[('active', fc_mark(['common', 'ttkCombobox', 'foreground', 'active'])),
+    #                             ('disabled', fc_mark(['common', 'ttkCombobox', 'foreground', 'disabled'])),
+    #                             # ('readonly', fc_mark(['common', 'ttkCombobox', 'foreground', 'readonly']))],
+    #                             ('readonly', fc_mark(['common', 'fgColor']))],
+    #                 fieldbackground=[('active', fc_mark(['common', 'tkEntry', 'bgColor'])),
+    #                             ('disabled', fc_mark(['common', 'tkEntry', 'disabledBgColor'])),
+    #                             # ('readonly', fc_mark(['common', 'ttkCombobox', 'fieldbackground', 'readonly']))],
+    #                             ('readonly', fc_mark(['common', 'tkEntry', 'bgColor']))],
+    #                 arrowcolor=[('disabled', fc_mark(['common', 'ttkScrollbar', 'arrowcolor', 'disabled']))])
 
-        isAllDefault = True
-        for k in tlStyleKeyMark:
-            rgbCn = tuple((c//256 for c in self.initWindow.winfo_rgb(getColorWithTlKeyAutoDefault(k))))
-            rgbCd = tuple((c//256 for c in self.initWindow.winfo_rgb(getColorWithTlKey(k, True, StyleEnum.Default))))
-            if rgbCn[0] != rgbCd[0] or rgbCn[1] != rgbCd[1] or rgbCn[2] != rgbCd[2]:
-                isAllDefault = False
-                break
-        if isAllDefault:
-            style.theme_use('vista')
+    #     isAllDefault = True
+    #     for k in tlStyleKeyMark:
+    #         rgbCn = tuple((c//256 for c in self.initWindow.winfo_rgb(getColorWithTlKeyAutoDefault(k))))
+    #         rgbCd = tuple((c//256 for c in self.initWindow.winfo_rgb(getColorWithTlKey(k, True, StyleEnum.Default))))
+    #         if rgbCn[0] != rgbCd[0] or rgbCn[1] != rgbCd[1] or rgbCn[2] != rgbCd[2]:
+    #             isAllDefault = False
+    #             break
+    #     if isAllDefault:
+    #         style.theme_use('vista')
 
     # 刷新选项
     def refreshOptions(self):
@@ -1176,12 +1223,26 @@ ctrl+tab：切换模式
         for typeStr in self.tmIsAskBeforeExecuting:
             self.tmIsAskBeforeExecuting[typeStr].set(1 if getOptionAskBeforeExecuting(typeStr) else 0)
         self.isDisableRightClickEdit.set(1 if GlobalValue.DISABLE_RCLICK_EDIT_NODE else 0)
-        self.initWindow.attributes("-alpha", GlobalValue.WINDOW_ALPHA/100.0)
+        # self.initWindow.attributes("-alpha", GlobalValue.WINDOW_ALPHA/100.0)
+        setInitWindowAlpha()
 
-    def onEventSettingColorChange(self):
-        self.refreshColors()
 
-    def onEventSettingOptionsChange(self):
+
+
+    # -----------------------------事件响应-----------------------------
+    def onEvent_NodeChange(self, *args):
+        # if GlobalValue.IS_DEBUG:
+        #     py3_common.Logging.debug2('MainGui onEventNodeChange', args)
+        if args != None and len(args) > 0:
+            self.refreshNodeByIndex(*args)
+        else:
+            self.updateTlNode()
+
+    def onEvent_SettingColorChange(self):
+        # self.refreshColors()
+        dispatchEvent(EventType.Event_NodeChange)
+
+    def onEvent_SettingOptionsChange(self):
         self.refreshOptions()
 
 
@@ -1366,6 +1427,7 @@ def gui_start():
     GlobalValue.INIT_WINDOW = initWindow
     # initWindow.configure(bg='blue')
     # initWindow['bg'] = 'blue'
+    configureTtkStyle()
 
 
     tkFont = font.nametofont("TkDefaultFont")
@@ -1380,6 +1442,7 @@ def gui_start():
     # pixelVirtual = PhotoImage(width=1, height=1)
 
     myGuiProgram = MainGui(initWindow)
+    GlobalValue.INIT_WINDOW_GUI = myGuiProgram
 
     tkCenter(initWindow)
     # 弹出初始化错误提示
