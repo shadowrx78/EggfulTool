@@ -27,32 +27,42 @@ import traceback
 # import ccbparser
 # import plistlib
 
-from .. import tkVirtualListHelper, py3_common, GlobalValue
+from .. import py3_common, GlobalValue
 from ..GlobalValue import *
 from ..EventProxy import *
+from .BaseView import *
 
 # 节点设置界面
-class NodeSettingView(Toplevel):
-    """docstring for NodeSettingView"""
-    def __init__(self, initWindow, mainView, index, data=None):
-        super(NodeSettingView, self).__init__(initWindow)
+class ViewNodeSetting(BaseView):
+    """
+    节点设置界面
+    参数:
+    initWindow:tkObj 父界面
+    """
+    def __init__(self, initWindow, index, data=None):
+        super(ViewNodeSetting, self).__init__(initWindow)
         self.initWindow = initWindow
-        self.mainView = mainView
         self.index = index
         self.data = data
         self.tempData = py3_common.deep_copy_dict(data) if data else dict()
         self.tmExUi = dict()
         self.tmExFun = None
+        self.tlScriptUi = list()
+        self.tmOldColor = dict()
         self.initUi()
 
-    def __del__(self):
-        py3_common.Logging.info2('NodeSettingView __del__')
+    # 是否需要锁定焦点，子类重载
+    def isNeedGrab(self):
+        return True
+
+    # 是否唯一，子类重载
+    def isUnique(self):
+        return True
 
     def initUi(self):
         self.resizable(width=False, height=False)
         self.title("修改" if self.data else "新建")
         self.rowconfigure(1,weight=1)
-        configureTkObjectColor(self)
 
         self.bind('<Escape>', lambda e:self.onBtnCancel())
         self.bind('<Alt-c>', lambda e:self.copyNodeConfig())
@@ -65,7 +75,7 @@ class NodeSettingView(Toplevel):
         frameTop = Frame(self)
         frameTop.grid(row=0,column=0,sticky='nsew')
         self.frameTop = frameTop
-        configureTkObjectColor(frameTop)
+        self.tkThemeHelper.addTkObj(frameTop)
         # frameTop.grid(row=0,column=0)
         # frameTop.columnconfigure(0,weight=1)
         # frameTop.columnconfigure(1,weight=1)
@@ -82,7 +92,7 @@ class NodeSettingView(Toplevel):
                 typeCombobox.unbind_class("TCombobox", "<MouseWheel>")
             typeCombobox.grid(row=0,column=0,sticky='w')
             self.typeCombobox = typeCombobox
-            configureTkObjectColor(typeCombobox)
+            self.tkThemeHelper.addTkObj(typeCombobox)
 
             # 启用拖入选中框
             self.checkbuttonDropVar = IntVar()
@@ -91,40 +101,40 @@ class NodeSettingView(Toplevel):
             # checkbuttonDrop.grid(row=0, column=1, padx=10)
             checkbuttonDrop.grid(row=1, column=0, sticky='w')
             self.checkbuttonDrop = checkbuttonDrop
-            configureTkObjectColor(checkbuttonDrop)
+            self.tkThemeHelper.addTkObj(checkbuttonDrop)
 
             # 上下箭头
             frameUpDownBtn = Frame(frameTop)
             frameUpDownBtn.grid(row=0, column=2, sticky='e')
-            configureTkObjectColor(frameUpDownBtn)
+            self.tkThemeHelper.addTkObj(frameUpDownBtn)
             buttonUp = Button(frameUpDownBtn, text='▲', width=4, command=lambda a=-1:self.onBtnUpDownClick(a))
             buttonUp.grid(row=0, column=0)
             buttonDown = Button(frameUpDownBtn, text='▼', width=4, command=lambda a=1:self.onBtnUpDownClick(a))
             buttonDown.grid(row=0, column=1)
             self.buttonUp = buttonUp
             self.buttonDown = buttonDown
-            configureTkObjectColor(buttonUp)
-            configureTkObjectColor(buttonDown)
+            self.tkThemeHelper.addTkObj(buttonUp)
+            self.tkThemeHelper.addTkObj(buttonDown)
 
             # 大小
             frameWH = Frame(frameTop)
             # frameWH.grid(row=1,column=0,sticky='ew')
             frameWH.grid(row=0,column=1,sticky='w',columnspan=1)
-            configureTkObjectColor(frameWH)
+            self.tkThemeHelper.addTkObj(frameWH)
             labelW = Label(frameWH, text='W', anchor='w')
             labelW.grid(row=0,column=0)
-            configureTkObjectColor(labelW)
+            self.tkThemeHelper.addTkObj(labelW)
             entryW = Entry(frameWH, width=4)
             py3_common.bindTkEditorRightClick(entryW, self)
             entryW.grid(row=0,column=1)
-            configureTkObjectColor(entryW)
+            self.tkThemeHelper.addTkObj(entryW)
             labelH = Label(frameWH, text='H', anchor='w')
             labelH.grid(row=0,column=2)
-            configureTkObjectColor(labelH)
+            self.tkThemeHelper.addTkObj(labelH)
             entryH = Entry(frameWH, width=4)
             py3_common.bindTkEditorRightClick(entryH, self)
             entryH.grid(row=0,column=3)
-            configureTkObjectColor(entryH)
+            self.tkThemeHelper.addTkObj(entryH)
             self.entryW = entryW
             self.entryH = entryH
 
@@ -132,13 +142,13 @@ class NodeSettingView(Toplevel):
             buttonOpenDir = Button(frameTop, text='打开所在位置', command=self.onBtnOpenDirClick)
             buttonOpenDir.grid(row=1,column=1,sticky='w')
             self.buttonOpenDir = buttonOpenDir
-            configureTkObjectColor(buttonOpenDir)
+            self.tkThemeHelper.addTkObj(buttonOpenDir)
 
             # 删除节点按钮
             buttonDel = Button(frameTop, text='删除节点', command=self.onBtnDel)
             buttonDel.grid(row=1,column=2,sticky='e')
             self.buttonDel = buttonDel
-            configureTkObjectColor(buttonDel)
+            self.tkThemeHelper.addTkObj(buttonDel)
 
             # 标记选中框
             self.checkbuttonBookmarkVar = IntVar()
@@ -146,22 +156,22 @@ class NodeSettingView(Toplevel):
             checkbuttonBookmark = Checkbutton(frameTop, text=str('标记'), variable=self.checkbuttonBookmarkVar, command=lambda v=self.checkbuttonBookmarkVar:True)
             checkbuttonBookmark.grid(row=2, column=0, sticky='w')
             self.checkbuttonBookmark = checkbuttonBookmark
-            configureTkObjectColor(checkbuttonBookmark)
+            self.tkThemeHelper.addTkObj(checkbuttonBookmark)
 
             # 执行前询问选择框
             frameAskExe = Frame(frameTop)
             frameAskExe.grid(row=2, column=1, sticky='w')
-            configureTkObjectColor(frameAskExe)
+            self.tkThemeHelper.addTkObj(frameAskExe)
             self.checkbuttonAskExeVar = IntVar()
             self.checkbuttonAskExeVar.set(0)
             checkbuttonAskExe = Checkbutton(frameAskExe, text=str('执行前询问'), variable=self.checkbuttonAskExeVar, command=lambda v=self.checkbuttonAskExeVar:True)
             checkbuttonAskExe.grid(row=0, column=0, sticky='w')
             self.checkbuttonAskExe = checkbuttonAskExe
-            configureTkObjectColor(checkbuttonAskExe)
+            self.tkThemeHelper.addTkObj(checkbuttonAskExe)
             # 执行前询问说明按钮
             btnTipsAskExe = Button(frameAskExe, text='!', width=3, command=self.onBtnTipsAskExeClick)
             btnTipsAskExe.grid(row=0,column=1)
-            configureTkObjectColor(btnTipsAskExe)
+            self.tkThemeHelper.addTkObj(btnTipsAskExe)
 
             # 禁用选中框
             self.checkbuttonDisableVar = IntVar()
@@ -169,22 +179,22 @@ class NodeSettingView(Toplevel):
             checkbuttonDisable = Checkbutton(frameTop, text=str('禁用'), variable=self.checkbuttonDisableVar, command=lambda v=self.checkbuttonDisableVar:True)
             checkbuttonDisable.grid(row=2, column=2, sticky='e')
             self.checkbuttonDisable = checkbuttonDisable
-            configureTkObjectColor(checkbuttonDisable)
+            self.tkThemeHelper.addTkObj(checkbuttonDisable)
 
             # 标题
             frameTitle = Frame(frameTop)
             frameTitle.grid(row=3,column=0,columnspan=3,rowspan=1)
-            configureTkObjectColor(frameTitle)
+            self.tkThemeHelper.addTkObj(frameTitle)
             frameTitle.rowconfigure(1,weight=1)
             frameTitle.columnconfigure(0,weight=1)
             labelTitle = Label(frameTitle, text='标题：', anchor='w')
             labelTitle.grid(row=0,column=0,sticky='ew')
-            configureTkObjectColor(labelTitle)
+            self.tkThemeHelper.addTkObj(labelTitle)
             textTitle = Text(frameTitle, height=4)
             py3_common.bindTkEditorRightClick(textTitle, self)
             textTitle.grid(row=1,column=0,sticky='nsew')
             self.textTitle = textTitle
-            configureTkObjectColor(textTitle)
+            self.tkThemeHelper.addTkObj(textTitle)
 
             textTitleVsb = ttk.Scrollbar(frameTitle,orient="vertical",command=textTitle.yview)
             textTitle.configure(yscrollcommand=textTitleVsb.set)
@@ -203,39 +213,51 @@ class NodeSettingView(Toplevel):
         # 留间距
         frameTemp = Frame(self)
         frameTemp.grid(row=2,column=0,sticky='nsew')
-        configureTkObjectColor(frameTemp)
+        self.tkThemeHelper.addTkObj(frameTemp)
+        frameTemp.columnconfigure(0,weight=1)
         labelTemp = Label(frameTemp, text=' ')
         labelTemp.grid(row=0,column=0,sticky='nsew')
-        configureTkObjectColor(labelTemp)
+        self.tkThemeHelper.addTkObj(labelTemp)
+        separatorTemp = ttk.Separator(frameTemp)
+        separatorTemp.grid(row=1,column=0,sticky='nsew',columnspan=1,rowspan=1)
 
         # 下
         frameBottom = Frame(self)
-        frameBottom.grid(row=3,column=0,sticky='nsew')
-        self.frameBottom = frameBottom
-        configureTkObjectColor(frameBottom)
+        frameBottom.rowconfigure(1,weight=1)
         frameBottom.columnconfigure(0,weight=1)
         frameBottom.columnconfigure(1,weight=1)
+        frameBottom.grid(row=3,column=0,sticky='nsew')
+        self.tkThemeHelper.addTkObj(frameBottom)
+
+        # frameTempWH = (120,10)
+        # frmTemp = Frame(frameBottom, height=frameTempWH[1], width=frameTempWH[0])
+        # frmTemp.grid(row=0, column=0, columnspan=2, rowspan=1)
+        # self.tkThemeHelper.addTkObj(frmTemp)
+
+        # 提示
+        labelTips = Label(frameBottom, text='复制节点json：Alt+C | 粘贴节点json：Alt+V', anchor='w')
+        labelTips.grid(row=0,column=0,sticky='nsew',columnspan=2,rowspan=1)
+        self.tkThemeHelper.addTkObj(labelTips)
+
+        # 确定取消按钮
         if True:
-            buttonConfirm = Button(frameBottom, text='确定', width=10, command=self.onBtnConfirm)
-            buttonConfirm.grid(row=0, column=0)
-            configureTkObjectColor(buttonConfirm)
-            buttonCancel = Button(frameBottom, text='取消', width=10, command=self.onBtnCancel)
-            buttonCancel.grid(row=0, column=1)
-            configureTkObjectColor(buttonCancel)
+            buttonConfirm = Button(frameBottom, text='确定', width=10, command=self.onBtnConfirm, takefocus=0)
+            buttonConfirm.grid(row=1, column=0)
+            self.tkThemeHelper.addTkObj(buttonConfirm)
+            buttonCancel = Button(frameBottom, text='取消', width=10, command=self.onBtnCancel, takefocus=0)
+            buttonCancel.grid(row=1, column=1)
+            self.tkThemeHelper.addTkObj(buttonCancel)
 
 
         # 刷新
         self.updateFrameTop(True)
         self.updateFrameMiddle()
+        self.tkThemeHelper.update()
 
 
-    def setIndex(self, index):
-        self.index = index
-
-    def getIndex(self):
-        return self.index
 
 
+    # -----------------------------界面刷新-----------------------------
     # 刷新上组件
     def updateFrameTop(self, refreshType=False, refreshTitle=False):
         tempData = self.tempData
@@ -314,6 +336,8 @@ class NodeSettingView(Toplevel):
         tempData = self.tempData
         # frameMiddle = self.frameMiddle
         try:
+            self.removeAllScriptUi()
+
             # 清空记录
             for k in self.tmExUi.keys():
                 ui = self.tmExUi[k]
@@ -324,6 +348,7 @@ class NodeSettingView(Toplevel):
 
             # 中 删除
             if self.frameMiddle:
+                self.tkThemeHelper.removeTkObj(self.frameMiddle)
                 self.frameMiddle.destroy()
                 del self.frameMiddle
 
@@ -331,7 +356,7 @@ class NodeSettingView(Toplevel):
             frameMiddle = Frame(self)
             frameMiddle.grid(row=1,column=0,sticky='nsew')
             self.frameMiddle = frameMiddle
-            configureTkObjectColor(frameMiddle)
+            self.tkThemeHelper.addTkObj(frameMiddle)
 
             if not self.tmExFun:
                 tmExFun = dict()
@@ -340,10 +365,23 @@ class NodeSettingView(Toplevel):
 
             key = getSettingKey(tempData)
             script = getImportModule(getModuleNameWithTypeStr(key))
-            script.createEditUi(frameMiddle, self.tmExUi, tempData, configureTkObjectColor, self.dnd, self.tmExFun)
+            script.createEditUi(frameMiddle, self.tmExUi, tempData, self.addScriptUi, self.dnd, self.tmExFun)
         except Exception as e:
             py3_common.Logging.error(e)
 
+    def addScriptUi(self, tkObj):
+        self.tlScriptUi.append(tkObj)
+        self.tkThemeHelper.addTkObj(tkObj)
+
+    def removeAllScriptUi(self):
+        for i in range(0,len(self.tlScriptUi)):
+            tkObj = self.tlScriptUi[i]
+            self.tkThemeHelper.removeTkObj(tkObj)
+        del self.tlScriptUi[0:]
+
+
+
+    # -----------------------------按钮响应-----------------------------
     # 类型选择
     def onTypeComboboxSelect(self):
         tempData = self.tempData
@@ -353,10 +391,11 @@ class NodeSettingView(Toplevel):
         # 刷新
         self.updateFrameTop()
         self.updateFrameMiddle()
+        self.tkThemeHelper.update()
 
     # 上下移动
     def onBtnUpDownClick(self, value):
-        index_ = self.mainView.moveItem(self.index, value)
+        index_ = GlobalValue.INIT_WINDOW_GUI.moveItem(self.index, value)
         if index_ != None:
             self.index = index_
 
@@ -377,16 +416,17 @@ class NodeSettingView(Toplevel):
 
     # 删除节点
     def onBtnDel(self):
-        value = messagebox.askokcancel('确认', '被删除节点信息将保存在 "%s"，\n是否删除该节点？' % os.path.realpath(GlobalValue.DELETED_NODES_BACKUP_JSON_PATH))
+        value = messagebox.askokcancel('确认', '被删除节点信息将保存在 "%s"，\n是否删除该节点？' % os.path.realpath(GlobalValue.DELETED_NODES_BACKUP_JSON_PATH), parent=self)
         if not value:
             return
         tempData = self.tempData
-        self.mainView.saveNodeData(self.index, tempData, SaveNodeDataOper.Delete)
-        self.destroy()
+        GlobalValue.INIT_WINDOW_GUI.saveNodeData(self.index, tempData, SaveNodeDataOper.Delete)
+        self.close()
 
     def onBtnCancel(self):
+        self.revertOldColor()
         # 关闭
-        self.destroy()
+        self.close()
 
     def onBtnConfirm(self):
         result = self.saveTempData()
@@ -394,7 +434,21 @@ class NodeSettingView(Toplevel):
             tempData = self.tempData
 
             # 关闭
-            self.destroy()
+            self.close()
+
+    def onBtnTipsAskExeClick(self):
+        tipsStr = u'该项涵义根据 "全局 执行前询问" 选项状态变化'
+        messagebox.showinfo('帮助', tipsStr, parent=self)
+
+
+
+
+    # -----------------------------数据-----------------------------
+    def setIndex(self, index):
+        self.index = index
+
+    def getIndex(self):
+        return self.index
 
     # 筛选保留字段
     def screenKey(self, data):
@@ -435,10 +489,10 @@ class NodeSettingView(Toplevel):
 
         if self.data == None:
             # 插入
-            self.mainView.saveNodeData(self.index, tempData, SaveNodeDataOper.Insert)
+            GlobalValue.INIT_WINDOW_GUI.saveNodeData(self.index, tempData, SaveNodeDataOper.Insert)
         else:
             # 修改
-            self.mainView.saveNodeData(self.index, tempData, SaveNodeDataOper.Edit)
+            GlobalValue.INIT_WINDOW_GUI.saveNodeData(self.index, tempData, SaveNodeDataOper.Edit)
 
         return True
 
@@ -526,6 +580,7 @@ class NodeSettingView(Toplevel):
         # 刷新
         self.updateFrameTop(refreshType=True, refreshTitle=True)
         self.updateFrameMiddle()
+        self.tkThemeHelper.update()
 
     # 保存部分设置
     def changeAndSaveTlProperty(self, tmData, refresh=True, isDelete=False):
@@ -540,6 +595,10 @@ class NodeSettingView(Toplevel):
         if result and refresh:
             dispatchEvent(EventType.Event_NodeChange, self.index)
 
+
+
+
+    # -----------------------------颜色选择相关-----------------------------
     # 创建修改颜色按钮
     # dataKey:颜色在节点data里面的key
     # tlKey:默认颜色的tlKey
@@ -549,11 +608,17 @@ class NodeSettingView(Toplevel):
         labelBtn.bind('<Button-1>', lambda e,labelBtn=labelBtn,tlKey=tlKey, dataKey=dataKey:self.openAskColor(labelBtn, dataKey, tlKey))
 
         # 还原默认
-        colorTemp = getColorWithTlKey(tlKey, True)
-        tmData = dict()
-        tmData[dataKey] = colorTemp
+        # colorTemp = getColorWithTlKey(tlKey, True)
+        # tmData = dict()
+        # tmData[dataKey] = colorTemp
         labelBtn.bind('<Button-3>', lambda e,labelBtn=labelBtn,tlKey=tlKey, dataKey=dataKey:self.setWithDefaultColor(labelBtn, dataKey, tlKey))
         # self.tlColorBtn.append([labelBtn, tlKey])
+
+        # 记录原本颜色
+        tempData = self.tempData
+        colorTemp = tempData[dataKey] if dataKey in tempData else None
+        self.tmOldColor[dataKey] = colorTemp
+
         return labelBtn
 
     # 更新按钮字体颜色
@@ -580,21 +645,22 @@ class NodeSettingView(Toplevel):
         colorTemp = tempData[dataKey] if dataKey in tempData else getColorWithTlKeyAutoDefault(tlKey)
         color = None
         if colorTemp:
-            color_ = askcolor(title="颜色", color=colorTemp)
+            color_ = askcolor(title="颜色", color=colorTemp, parent=self)
             if color_:
                 py3_common.Logging.debug(color_)
                 color = color_[1]
         else:
-            color_ = askcolor(title="颜色")
+            color_ = askcolor(title="颜色", parent=self)
             if color_:
                 color = color_[1]
         # if not color:
         #     color = colorTemp if colorTemp else getColorWithTlKey(tlKey, True)
         if color:
+            colorDefault = getColorWithTlKeyAutoDefault(tlKey)
             tmData = dict()
             tmData[dataKey] = color
             # self.saveColor(labelBtn, tlKey, color)
-            self.changeAndSaveTlProperty(tmData)
+            self.changeAndSaveTlProperty(tmData, isDelete=(color == colorDefault))
             self.updateLabelBtnColor(labelBtn, dataKey, tlKey)
 
     def setWithDefaultColor(self, labelBtn, dataKey, tlKey):
@@ -604,9 +670,23 @@ class NodeSettingView(Toplevel):
         self.changeAndSaveTlProperty(tmData, isDelete=True)
         self.updateLabelBtnColor(labelBtn, dataKey, tlKey)
 
-    def onBtnTipsAskExeClick(self):
-        tipsStr = u'该项涵义根据 "全局 执行前询问" 选项状态变化'
-        messagebox.showinfo('帮助', tipsStr, parent=self)
+    # 还原之前颜色
+    def revertOldColor(self):
+        if not bool(self.tmOldColor):
+            return
+        tmData = dict()
+        tmDataDel = dict()
+        for k in self.tmOldColor:
+            color = self.tmOldColor[k]
+            if color == None:
+                tmDataDel[k] = None
+            else:
+                tmData[k] = color
+        self.changeAndSaveTlProperty(tmDataDel, isDelete=True)
+        self.changeAndSaveTlProperty(tmData)
+
+
+
 
     def testSaveExeIcon(self):
         # tempData = self.tempData

@@ -82,8 +82,8 @@ class ViewListLineNode(BaseView):
         self.bind('<Down>', lambda e,v=1:self.selectListboxWithShift(v))
         self.bind('<Home>', lambda e,v=True:self.selectListboxTopOrBottom(v))
         self.bind('<End>', lambda e,v=False:self.selectListboxTopOrBottom(v))
-        self.bind('<Prior>', lambda e,v=-M_PageShowNum:self.selectListboxWithShift(v))
-        self.bind('<Next>', lambda e,v=M_PageShowNum:self.selectListboxWithShift(v))
+        self.bind('<Prior>', lambda e,v=-M_PageShowNum:self.selectListboxWithShift(v, isPageChange=True))
+        self.bind('<Next>', lambda e,v=M_PageShowNum:self.selectListboxWithShift(v, isPageChange=True))
         self.bind('<Alt-c>', self.onAltCClick)
         # self.protocol("WM_DELETE_WINDOW", self.onClose)
 
@@ -258,7 +258,7 @@ class ViewListLineNode(BaseView):
         self.refreshListBoxLine()
         return True
 
-    def selectListboxWithShift(self, shift):
+    def selectListboxWithShift(self, shift, isPageChange=False):
         if self.tlScreenNodeData == None or self.tlConvertScreenNodeData == None:
             return
         listbox = self.listboxLine
@@ -277,7 +277,11 @@ class ViewListLineNode(BaseView):
             # py3_common.Logging.debug('b', index)
             listbox.selection_set(index, index)
         if index != None:
-            listbox.see(index)
+            totalNum = len(self.tlConvertScreenNodeData)
+            if isPageChange and totalNum > M_PageShowNum:
+                listbox.yview_moveto(index / totalNum)
+            else:
+                listbox.see(index)
         self.onListboxLineSelect(None)
 
     def selectListboxTopOrBottom(self, isTop=True):

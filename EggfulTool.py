@@ -47,7 +47,7 @@ from script.node.BtnNode import *
 from script.node.CreateNode import *
 
 from script.view.ViewListLineNode import *
-from script.view.NodeSettingView import *
+from script.view.ViewNodeSetting import *
 from script.view.ViewRootSetting import *
 
 # import win32ui
@@ -388,7 +388,7 @@ class MainGui(Frame):
         self.initWindow.bind('<Control-Tab>', lambda e:self.selectUiMode((self.modeSelectValue.get() + 1) % len(TL_UI_MODE_DATA)))
 
         # ---------缓存初始化---------
-        self.settingView = None
+        # self.settingView = None
         # self.listLineNodeView = None
         # self.rootSettingView = None
         self.isInVirtualList = False
@@ -795,34 +795,36 @@ ctrl+tab：切换模式
 
 
     # 设置界面
-    def openNodeSettingView(self, index, data=None):
+    def openViewNodeSetting(self, index, data=None):
         # if self.inVirtualListMousePos:
         #     nodeIndex = self.virtualListFrame.virtualListCanvas.getNearIndexWithPos(self.inVirtualListMousePos)
         #     print("aaaaaaaaaaaaaaaa", index, nodeIndex)
         self.selectEditItem()
 
-        if self.settingView:
-            try:
-                self.settingView.destroy()
-            except Exception as e:
-                # raise e
-                pass
-            self.settingView = None
+        # if self.settingView:
+        #     try:
+        #         self.settingView.destroy()
+        #     except Exception as e:
+        #         # raise e
+        #         pass
+        #     self.settingView = None
 
-        # 弹框用TopLevel
-        # py3_common.Logging.debug3(index)
-        view = NodeSettingView(self.initWindow, self, index, data)
-        # view.wm_attributes('-topmost',1)
-        # view.minsize(300, 200)
-        self.settingView = view
-        view.after(1, lambda: view.focus_force())
+        # # 弹框用TopLevel
+        # # py3_common.Logging.debug3(index)
+        # view = NodeSettingView(self.initWindow, self, index, data)
+        # # view.wm_attributes('-topmost',1)
+        # # view.minsize(300, 200)
+        # self.settingView = view
+        # view.after(1, lambda: view.focus_force())
 
-        tkCenter(view)
+        # tkCenter(view)
 
-        # 锁定焦点
-        view.grab_set()
+        # # 锁定焦点
+        # view.grab_set()
 
-        # view.rowconfigure(1,weight=1)
+        # # view.rowconfigure(1,weight=1)
+
+        view = ViewNodeSetting(self, index, data)
 
     # 搜索行标记界面
     def openViewListLineNode(self, mode):

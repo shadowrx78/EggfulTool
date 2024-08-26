@@ -269,7 +269,7 @@ class BtnNode(tkVirtualListHelper.BaseNode):
         elif GlobalValue.UI_MODE == UiModeEnum.Edit:
             try:
                 args = self.args
-                args['mainView'].openNodeSettingView(self.getExData('index'), args)
+                args['mainView'].openViewNodeSetting(self.getExData('index'), args)
             except Exception as e:
                 py3_common.Logging.error(e)
 
@@ -280,7 +280,7 @@ class BtnNode(tkVirtualListHelper.BaseNode):
                 return
             try:
                 args = self.args
-                args['mainView'].openNodeSettingView(self.getExData('index'), args)
+                args['mainView'].openViewNodeSetting(self.getExData('index'), args)
             except Exception as e:
                 py3_common.Logging.error(e)
         elif GlobalValue.UI_MODE == UiModeEnum.Edit:
