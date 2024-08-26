@@ -228,7 +228,7 @@ VIEW_NEED_GRAB_STACK = None
 
 #####次级界面相关
 # 搜索界面类型
-class ListLineNodeViewModeEnum():
+class ListLineNodeModeEnum():
     P = 0
     R = 1
     F = 2
@@ -1021,6 +1021,19 @@ def hasSameClassView(view):
         if viewClassName == cName:
             return True
     return False
+
+def getTlViewByClassName(viewClassName):
+    if VIEW_STACK == None or len(VIEW_STACK) == 0:
+        return None
+    tlView = list()
+    for i in range(0,len(VIEW_STACK)):
+        view = VIEW_STACK[i]
+        cName = view.__class__.__name__
+        if viewClassName == cName:
+            tlView.append(view)
+    if len(tlView) > 0:
+        return tlView
+    return None
 
 def onEvent_ViewNeedGrabShow(view):
     if VIEW_NEED_GRAB_STACK == None:

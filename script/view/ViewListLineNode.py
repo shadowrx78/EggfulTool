@@ -27,53 +27,76 @@ import traceback
 # import ccbparser
 # import plistlib
 
-from .. import tkVirtualListHelper, py3_common, GlobalValue
+from .. import py3_common, GlobalValue
 from ..GlobalValue import *
 from ..EventProxy import *
+from .BaseView import *
+
+M_PageShowNum = 7     #一页显示多少个，要算出来太复杂，直接写死
 
 # 搜索界面（列表展示样式）
-class ListLineNodeView(Toplevel):
-    """docstring for ListLineNodeView"""
-    def __init__(self, initWindow, mainView, mode=ListLineNodeViewModeEnum.P, tlNodeData=None):
-        super(ListLineNodeView, self).__init__()
+class ViewListLineNode(BaseView):
+    """
+    搜索界面（列表展示样式）
+    参数:
+    initWindow:tkObj 父界面
+    mode:ListLineNodeModeEnum 搜索模式
+    tlNodeData:list 所有节点列表
+    """
+    def __init__(self, initWindow, mode=ListLineNodeModeEnum.P, tlNodeData=None):
+        if self.checkUniqueNeedClose():
+            return
+        super(ViewListLineNode, self).__init__()
         self.initWindow = initWindow
-        self.mainView = mainView
         self.mode = mode
         self.tlScreenNodeData = None
         self.tlConvertScreenNodeData = None
         self.searchStr = ''
+        self.nowSelectIndex = -1
         self.initUi()
         if tlNodeData != None:
             self.updateTlNodeData(tlNodeData)
 
-    def __del__(self):
-        py3_common.Logging.info2('ListLineNodeView __del__')
+    # 是否需要锁定焦点，子类重载
+    def isNeedGrab(self):
+        return False
+
+    # 是否唯一，子类重载
+    def isUnique(self):
+        return True
+
+    # 弹窗位置，返回None时不设置，子类重载
+    def getAnchorPos(self):
+        return {'x':0.8, 'y':0.5}
         
     def initUi(self):
         # self.resizable(width=False, height=False)
-        tmTitle = {ListLineNodeViewModeEnum.P:'搜索分割线', ListLineNodeViewModeEnum.R:'搜索标记'}
+        tmTitle = {ListLineNodeModeEnum.P:'搜索分割线', ListLineNodeModeEnum.R:'搜索标记'}
         self.title(tmTitle[self.mode] if self.mode in tmTitle else '搜索')
         self.rowconfigure(0,weight=1)
         self.columnconfigure(0,weight=1)
-        configureTkObjectColor(self)
 
         self.bind('<Escape>', lambda e:self.onBtnClose())
         self.bind('<Return>', lambda e:self.onBtnClose())
         self.bind('<Up>', lambda e,v=-1:self.selectListboxWithShift(v))
         self.bind('<Down>', lambda e,v=1:self.selectListboxWithShift(v))
+        self.bind('<Home>', lambda e,v=True:self.selectListboxTopOrBottom(v))
+        self.bind('<End>', lambda e,v=False:self.selectListboxTopOrBottom(v))
+        self.bind('<Prior>', lambda e,v=-M_PageShowNum:self.selectListboxWithShift(v))
+        self.bind('<Next>', lambda e,v=M_PageShowNum:self.selectListboxWithShift(v))
         self.bind('<Alt-c>', self.onAltCClick)
         # self.protocol("WM_DELETE_WINDOW", self.onClose)
 
         frameTop = Frame(self)
         frameTop.grid(row=0,column=0,sticky='nsew')
-        configureTkObjectColor(frameTop)
+        self.tkThemeHelper.addTkObj(frameTop)
         self.frameTop = frameTop
         frameTop.rowconfigure(1,weight=1)
         frameTop.columnconfigure(0,weight=1)
 
         labelTitle = Label(frameTop, text='点击跳转：', anchor='w')
         labelTitle.grid(row=0,column=0,sticky='ew')
-        configureTkObjectColor(labelTitle)
+        self.tkThemeHelper.addTkObj(labelTitle)
 
         # https://anzeljg.github.io/rin2/book2/2405/docs/tkinter/listbox.html
         # selectmode=EXTENDED 多选模式
@@ -84,7 +107,7 @@ class ListLineNodeView(Toplevel):
         self.listboxLine.bind('<<ListboxSelect>>', self.onListboxLineSelect)
         self.listboxLine.bind('<Double-1>', lambda e:self.onBtnClose())
         self.listboxLine.grid(row=1,column=0,sticky='nsew')
-        configureTkObjectColor(self.listboxLine)
+        self.tkThemeHelper.addTkObj(self.listboxLine)
 
         listboxLineVsb = ttk.Scrollbar(frameTop,orient="vertical",command=self.listboxLine.yview)
         self.listboxLine.configure(yscrollcommand=listboxLineVsb.set)
@@ -96,18 +119,19 @@ class ListLineNodeView(Toplevel):
 
         frameMiddle = Frame(self)
         frameMiddle.grid(row=1, column=0, sticky='nsew')
+        self.tkThemeHelper.addTkObj(frameMiddle)
         frameMiddle.columnconfigure(0,weight=1)
-        configureTkObjectColor(frameMiddle)
 
         # 搜索输入
         callback = self.register(self.searchEntryCallback)    #输入回调
         searchEntry = Entry(frameMiddle, validate='key', validatecommand=(callback, '%P'))
         searchEntry.grid(row=0, column=0, sticky='ew', pady=10)
+        self.tkThemeHelper.addTkObj(searchEntry)
+        py3_common.bindTkEditorRightClick(searchEntry, self, tkThemeHelper=self.tkThemeHelper)
         self.searchEntry = searchEntry
         searchEntry.focus_set()
         # 好像有的电脑focus不到，延迟再来一次
         self.after(100, lambda: self.searchEntry.focus_set())
-        configureTkObjectColor(searchEntry)
 
         # 选项
         # 区分大小写
@@ -115,40 +139,42 @@ class ListLineNodeView(Toplevel):
         self.checkbuttonNoIgnorecaseVar.set(1 if GlobalValue.SEARCH_VIEW_NO_IGNORECASE else 0)
         checkbuttonNoIgnorecase = Checkbutton(frameMiddle, text=str('区分大小写'), variable=self.checkbuttonNoIgnorecaseVar, command=lambda :self.onNoIgnorecaseVarChange(), takefocus=0)
         checkbuttonNoIgnorecase.grid(row=1, column=0, sticky='w')
+        self.tkThemeHelper.addTkObj(checkbuttonNoIgnorecase)
         self.checkbuttonNoIgnorecase = checkbuttonNoIgnorecase
-        configureTkObjectColor(checkbuttonNoIgnorecase)
 
         # 留间距
         frameTemp = Frame(self)
         frameTemp.grid(row=2,column=0,sticky='nsew')
-        configureTkObjectColor(frameTemp)
+        self.tkThemeHelper.addTkObj(frameTemp)
         labelTemp = Label(frameTemp, text=' ')
         labelTemp.grid(row=0,column=0,sticky='nsew')
-        configureTkObjectColor(labelTemp)
+        self.tkThemeHelper.addTkObj(labelTemp)
 
         # 下
         frameBottom = Frame(self)
         frameBottom.grid(row=3,column=0,sticky='nsew')
-        configureTkObjectColor(frameBottom)
+        self.tkThemeHelper.addTkObj(frameBottom)
         self.frameBottom = frameBottom
         frameBottom.columnconfigure(0,weight=1)
         if True:
             buttonCancel = Button(frameBottom, text='关闭', width=10, command=self.onBtnClose, takefocus=0)
             buttonCancel.grid(row=0, column=0)
-            configureTkObjectColor(buttonCancel)
+            self.tkThemeHelper.addTkObj(buttonCancel)
+
+        self.tkThemeHelper.update()
 
     def updateTlNodeData(self, tlNodeData=None):
         if tlNodeData != None:
             self.tlScreenNodeData = list()
             for i in range(0,len(tlNodeData)):
                 nodeData = tlNodeData[i]
-                if self.mode == ListLineNodeViewModeEnum.P:
+                if self.mode == ListLineNodeModeEnum.P:
                     if nodeData['nodeType'] == 'Line':
                         self.tlScreenNodeData.append({'index':i, 'nodeData':nodeData})
-                elif self.mode == ListLineNodeViewModeEnum.R:
+                elif self.mode == ListLineNodeModeEnum.R:
                     if nodeData['nodeType'] == 'Btn' and 'bookmark' in nodeData and nodeData['bookmark']:
                         self.tlScreenNodeData.append({'index':i, 'nodeData':nodeData})
-                elif self.mode == ListLineNodeViewModeEnum.F:
+                elif self.mode == ListLineNodeModeEnum.F:
                     if nodeData['nodeType'] != 'Create':
                         self.tlScreenNodeData.append({'index':i, 'nodeData':nodeData})
 
@@ -205,7 +231,8 @@ class ListLineNodeView(Toplevel):
             cIndex = self.tlConvertScreenNodeData[tlIndex[0]]
             if len(self.tlScreenNodeData) > cIndex:
                 index = self.tlScreenNodeData[cIndex]['index']
-                self.mainView.jumpToIndex(index)
+                if GlobalValue.INIT_WINDOW_GUI:
+                    GlobalValue.INIT_WINDOW_GUI.jumpToIndex(index)
 
                 # global NOW_SELECT_INDEX
                 # global FORCE_SHOW_SELECT
@@ -217,8 +244,8 @@ class ListLineNodeView(Toplevel):
                     dispatchEvent(EventType.Event_NodeChange, oldSelectIndex, False, True)
 
     def onBtnClose(self):
-        # 关闭
-        self.destroy()
+        py3_common.Logging.debug(self.getClassName(),'onBtnClose')
+        self.close()
 
     # def onClose(self):
     #     # global FORCE_SHOW_SELECT
@@ -245,12 +272,17 @@ class ListLineNodeView(Toplevel):
             # py3_common.Logging.debug('a', index)
             listbox.selection_set(index, index)
         else:
-            index = 0 if shift > 0 else len(self.tlConvertScreenNodeData)-1
+            index = -1 if shift > 0 else len(self.tlConvertScreenNodeData)
+            index = index + shift
             # py3_common.Logging.debug('b', index)
             listbox.selection_set(index, index)
         if index != None:
             listbox.see(index)
         self.onListboxLineSelect(None)
+
+    def selectListboxTopOrBottom(self, isTop=True):
+        totalNum = len(self.tlConvertScreenNodeData)
+        return self.selectListboxWithShift((-totalNum) if isTop else totalNum)
 
     def onNoIgnorecaseVarChange(self):
         GlobalValue.SEARCH_VIEW_NO_IGNORECASE = self.checkbuttonNoIgnorecaseVar.get() > 0

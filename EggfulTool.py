@@ -46,7 +46,7 @@ from script.node.LineNode import *
 from script.node.BtnNode import *
 from script.node.CreateNode import *
 
-from script.view.ListLineNodeView import *
+from script.view.ViewListLineNode import *
 from script.view.NodeSettingView import *
 from script.view.ViewRootSetting import *
 
@@ -285,9 +285,9 @@ class MainGui(Frame):
         self.initWindow.bind('<Down>', lambda e,arrow=ArrowDirEnum.Down:self.onKeyboardArrowClick(arrow))
         self.initWindow.bind('<Right>', lambda e,arrow=ArrowDirEnum.Right:self.onKeyboardArrowClick(arrow))
         self.initWindow.bind('<Delete>', self.onKeyBoardDeleteClick)
-        self.initWindow.bind('<Control-p>', lambda e,mode=ListLineNodeViewModeEnum.P:self.openListLineNodeView(mode))
-        self.initWindow.bind('<Control-r>', lambda e,mode=ListLineNodeViewModeEnum.R:self.openListLineNodeView(mode))
-        self.initWindow.bind('<Control-f>', lambda e,mode=ListLineNodeViewModeEnum.F:self.openListLineNodeView(mode))
+        self.initWindow.bind('<Control-p>', lambda e,mode=ListLineNodeModeEnum.P:self.openViewListLineNode(mode))
+        self.initWindow.bind('<Control-r>', lambda e,mode=ListLineNodeModeEnum.R:self.openViewListLineNode(mode))
+        self.initWindow.bind('<Control-f>', lambda e,mode=ListLineNodeModeEnum.F:self.openViewListLineNode(mode))
         self.initWindow.bind('<Control-c>', lambda e:self.copySelectNodeConfig())
         self.initWindow.bind('<Home>', lambda e,v=0:self.jumpTo(v))
         self.initWindow.bind('<End>', lambda e,v=1:self.jumpTo(v))
@@ -389,7 +389,7 @@ class MainGui(Frame):
 
         # ---------缓存初始化---------
         self.settingView = None
-        self.listLineNodeView = None
+        # self.listLineNodeView = None
         # self.rootSettingView = None
         self.isInVirtualList = False
         self.inVirtualListMousePos = None
@@ -410,6 +410,9 @@ class MainGui(Frame):
 
         self.executor = ThreadPoolExecutor(max_workers=1)   #线程池
         GlobalValue.ROOT_THREAD_POOL_EXECUTOR = self.executor
+
+        GlobalValue.VIEW_STACK = list()    #界面栈
+        GlobalValue.VIEW_NEED_GRAB_STACK = list()    #界面栈
 
         # self.refreshColors()
         self.updateTlNode()
@@ -822,27 +825,30 @@ ctrl+tab：切换模式
         # view.rowconfigure(1,weight=1)
 
     # 搜索行标记界面
-    def openListLineNodeView(self, mode):
-        if self.listLineNodeView:
-            try:
-                self.listLineNodeView.destroy()
-            except Exception as e:
-                # raise e
-                pass
-            self.listLineNodeView = None
+    def openViewListLineNode(self, mode):
+        # if self.listLineNodeView:
+        #     try:
+        #         self.listLineNodeView.destroy()
+        #     except Exception as e:
+        #         # raise e
+        #         pass
+        #     self.listLineNodeView = None
 
-        # 弹框用TopLevel
-        # py3_common.Logging.debug3(index)
-        view = ListLineNodeView(self.initWindow, self, mode, self.virtualListFrame.getTlData())
-        # view.wm_attributes('-topmost',1)
-        # view.minsize(300, 200)
-        self.listLineNodeView = view
-        view.after(1, lambda: view.focus_force())
+        # # 弹框用TopLevel
+        # # py3_common.Logging.debug3(index)
+        # view = ListLineNodeView(self.initWindow, self, mode, self.virtualListFrame.getTlData())
+        # # view.wm_attributes('-topmost',1)
+        # # view.minsize(300, 200)
+        # self.listLineNodeView = view
+        # view.after(1, lambda: view.focus_force())
 
-        tkCenter(view, anchorPos={'x':0.8, 'y':0.5})
+        # tkCenter(view, anchorPos={'x':0.8, 'y':0.5})
 
-        # 锁定焦点
-        # view.grab_set()
+        # # 锁定焦点
+        # # view.grab_set()
+
+        py3_common.Logging.debug(self.getClassName(),'openViewListLineNode')
+        view = ViewListLineNode(self, mode, self.virtualListFrame.getTlData())
 
     def copySelectNodeConfig(self):
         if GlobalValue.NOW_SELECT_INDEX != None and GlobalValue.UI_MODE == UiModeEnum.Edit:
@@ -877,8 +883,13 @@ ctrl+tab：切换模式
             tlNodeData.append(self.convertNodeArgs(GlobalValue.TEMP_NODE_LIST[i]))
         self.virtualListFrame.setTlData(tlNodeData)
 
-        if self.listLineNodeView and self.listLineNodeView.winfo_exists():
-            self.listLineNodeView.updateTlNodeData(self.virtualListFrame.getTlData())
+        # if self.listLineNodeView and self.listLineNodeView.winfo_exists():
+        #     self.listLineNodeView.updateTlNodeData(self.virtualListFrame.getTlData())
+        tlView = getTlViewByClassName('ViewListLineNode')
+        if tlView != None:
+            tlNodeDataTemp = self.virtualListFrame.getTlData()
+            for i in range(0,len(tlView)):
+                tlView[i].updateTlNodeData(tlNodeDataTemp)
 
     def refreshNodeByIndex(self, index, ui=True, ex=False):
         # # global FORCE_SHOW_SELECT
@@ -1033,13 +1044,17 @@ ctrl+tab：切换模式
             self.saveNodeData(selectIndex, None, SaveNodeDataOper.Delete)
 
     def onFocus(self, event):
-        if self.listLineNodeView:
-            try:
-                self.listLineNodeView.destroy()
-            except Exception as e:
-                # raise e
-                pass
-            self.listLineNodeView = None
+        # if self.listLineNodeView:
+        #     try:
+        #         self.listLineNodeView.destroy()
+        #     except Exception as e:
+        #         # raise e
+        #         pass
+        #     self.listLineNodeView = None
+        tlView = getTlViewByClassName('ViewListLineNode')
+        if tlView != None:
+            for i in range(0,len(tlView)):
+                tlView[i].close()
 
         # global FORCE_SHOW_SELECT
         GlobalValue.FORCE_SHOW_SELECT = False
