@@ -212,8 +212,20 @@ DISABLE_RCLICK_EDIT_NODE = False
 
 
 #####其他共享数据
-# 当前节点列表缓存
-TEMP_NODE_LIST = None
+# # 当前节点列表缓存
+# TEMP_NODE_LIST = None
+# # 节点列表缓存备份，还原或确定保存后销毁
+# TEMP_NODE_LIST_BACKUP = None
+# 节点缓存，节点数据和顺序数据分开保存
+# {
+#     "tlNode":[],  #实际节点数据
+#     "tlIndex"[]   #顺序数据，对应节点index
+# }
+TEMP_TM_NODE_DATA = None
+# 节点缓存备份，还原或确定保存后销毁
+TEMP_TM_NODE_DATA_BACKUP = None
+# 节点缓存初始值
+TEMP_TM_NODE_DATA_INIT = {'tlNode':[], 'tlIndex':[]}
 # 主界面线程池
 ROOT_THREAD_POOL_EXECUTOR = None
 # 搜索界面区分大小写
@@ -543,7 +555,8 @@ def getTmBtnTypeColorAddDefault(tmColor, styleType=None):
 
 # 刷新节点列表
 def refreshNodesConfig():
-    global TEMP_NODE_LIST
+    # global TEMP_NODE_LIST
+    global TEMP_TM_NODE_DATA
     global TL_INIT_ERROR_MSG
     if os.path.isfile(NODES_CONFIG_JSON_PATH):
         jList = py3_common.loadJsonToList(NODES_CONFIG_JSON_PATH)
@@ -557,25 +570,44 @@ def refreshNodesConfig():
             # messagebox.showerror('错误', errStr)
             TL_INIT_ERROR_MSG.append(errStr)
             jList = list()
-        TEMP_NODE_LIST = jList
+        # TEMP_NODE_LIST = jList
+
+        # 新结构缓存
+        tmTemp = dict()
+        tmTemp['tlNode'] = jList
+        tlIndex = list()
+        for i in range(0,len(jList)):
+            tlIndex.append(i)
+        tmTemp['tlIndex'] = tlIndex
+        TEMP_TM_NODE_DATA = tmTemp
     else:
-        if TEMP_NODE_LIST != None and len(TEMP_NODE_LIST) > 0:
-            backupFilePath = backupTempJson(TEMP_NODE_LIST, NODES_CONFIG_JSON_PATH, JSON_BACKUP_DIR)
+        # if TEMP_NODE_LIST != None and len(TEMP_NODE_LIST) > 0:
+        #     backupFilePath = backupTempJson(TEMP_NODE_LIST, NODES_CONFIG_JSON_PATH, JSON_BACKUP_DIR)
+        #     errStr = '节点配置文件丢失，已将当前节点数据备份至"%s"' % backupFilePath
+        #     TL_INIT_ERROR_MSG.append(errStr)
+        # TEMP_NODE_LIST = list()
+
+        if TEMP_TM_NODE_DATA != None and 'tlIndex' in TEMP_TM_NODE_DATA and len(TEMP_TM_NODE_DATA['tlIndex']) > 0:
+            backupFilePath = backupTempJson(TEMP_TM_NODE_DATA, NODES_CONFIG_JSON_PATH, JSON_BACKUP_DIR)
             errStr = '节点配置文件丢失，已将当前节点数据备份至"%s"' % backupFilePath
             TL_INIT_ERROR_MSG.append(errStr)
-        TEMP_NODE_LIST = list()
+        TEMP_TM_NODE_DATA = py3_common.deep_copy_dict(TEMP_TM_NODE_DATA_INIT)
 
 # 初始化节点列表
 def initNodesConfig():
-    global TEMP_NODE_LIST
+    # global TEMP_NODE_LIST
+    global TEMP_TM_NODE_DATA
     refreshNodesConfig()
-    if not TEMP_NODE_LIST:
-        TEMP_NODE_LIST = list()
+    # if not TEMP_NODE_LIST:
+    #     TEMP_NODE_LIST = list()
+    if not TEMP_TM_NODE_DATA:
+        TEMP_TM_NODE_DATA = py3_common.deep_copy_dict(TEMP_TM_NODE_DATA_INIT)
 
 
 # 创建节点配置json
 def createNodesConfigJson():
-    jList = TEMP_NODE_LIST
+    # jList = TEMP_NODE_LIST
+    jList = TEMP_TM_NODE_DATA
     if jList == None or not isinstance(jList, list):
         jList = list()
     dumpNodesConfigList(jList)
@@ -604,15 +636,22 @@ def dumpListToJsonFile(jList, path, print_dump_path=True):
 # 保存节点配置
 def dumpNodesConfigList(jList=None, path=None, print_dump_path=True):
     if jList == None:
-        jList = TEMP_NODE_LIST
+        # jList = TEMP_NODE_LIST
+        jList = TEMP_TM_NODE_DATA
     # py3_common.Logging.debug(jList)
     if path == None:
         path = NODES_CONFIG_JSON_PATH
     tlNodeData = list()
-    for i in range(0,len(jList)):
-        nodeData = jList[i]
-        if nodeData['nodeType'] != 'Create':
-            tlNodeData.append(nodeData)
+    # for i in range(0,len(jList)):
+    #     nodeData = jList[i]
+    #     if nodeData['nodeType'] != 'Create':
+    #         tlNodeData.append(nodeData)
+    tlIndex = jList['tlIndex']
+    tlNode = jList['tlNode']
+    for i in range(0,len(tlIndex)):
+        index = tlIndex[i]
+        if index >= 0 and index < len(tlNode):
+            tlNodeData.append(tlNode[index])
     return dumpListToJsonFile(tlNodeData, path, print_dump_path=print_dump_path)
 
 # 记录删除节点

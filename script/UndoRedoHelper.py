@@ -43,9 +43,9 @@ class UndoRedoHelper(object):
         recordData['oper'] = oper
         recordData['tlKey'] = tlKey
         if newValue != None:
-            recordData['newValue'] = newValue
+            recordData['newValue'] = py3_common.deep_copy_dict(newValue, isIgnoreType=True)
         if oldValue != None:
-            recordData['oldValue'] = oldValue
+            recordData['oldValue'] = py3_common.deep_copy_dict(oldValue, isIgnoreType=True)
 
         # 指针不在末尾，删除指针后所有记录
         if len(self.tlOperRecord) > self.recordPointer+1:
@@ -79,8 +79,8 @@ class UndoRedoHelper(object):
         if self.recordPointer < 0 or len(self.tlOperRecord) == 0:
             return False
         try:
-            recordData = self.tlOperRecord[self.recordPointer]
-            py3_common.Logging.debug3('----------undo',recordData if GlobalValue.IS_EVENTPROXY_SHOW_ARGS else '')
+            recordData = py3_common.deep_copy_dict(self.tlOperRecord[self.recordPointer])
+            py3_common.Logging.debug3('----------undo',recordData if GlobalValue.IS_EVENTPROXY_SHOW_ARGS else '', self.recordPointer)
             if recordData['oper'] == self.OperAdd:
                 # 删除
                 py3_common.setValueWithTlKey(nowData, recordData['tlKey'], None, isDel=True, isInsert=False)
@@ -110,8 +110,8 @@ class UndoRedoHelper(object):
         if self.recordPointer >= len(self.tlOperRecord)-1 or len(self.tlOperRecord) == 0:
             return False
         try:
-            recordData = self.tlOperRecord[self.recordPointer+1]
-            py3_common.Logging.debug3('----------redo',recordData if GlobalValue.IS_EVENTPROXY_SHOW_ARGS else '')
+            recordData = py3_common.deep_copy_dict(self.tlOperRecord[self.recordPointer+1])
+            py3_common.Logging.debug3('----------redo',recordData if GlobalValue.IS_EVENTPROXY_SHOW_ARGS else '', self.recordPointer)
             if recordData['oper'] == self.OperAdd:
                 # 添加
                 py3_common.setValueWithTlKey(nowData, recordData['tlKey'], recordData['newValue'], isDel=False, isInsert=True)

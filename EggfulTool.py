@@ -58,7 +58,7 @@ from script.view.ViewRootSetting import *
 
 PROGRAM_TITLE_NAME = '有点卵用工具'
 PROGRAM_NAME = 'EggfulTool'
-PROGRAM_VERSION = '1.0.7α2'
+PROGRAM_VERSION = '1.0.7α3'
 
 TL_UI_MODE_DATA = [
     {'name':'通常', 'key':UiModeEnum.Normal},
@@ -243,6 +243,12 @@ class MainGui(Frame):
         self.menuFile.add_separator()                        #添加分割线
         self.menuFile.add_command(label="退出",command=self.closeRootWindow)
 
+        self.menuEdit = Menu(self.mbar, tearoff=False)             #在顶级菜单下创建菜单项
+        self.mbar.add_cascade(label=' 编辑 ',menu=self.menuEdit) #添加子菜单
+        self.tkThemeHelper.addTkObj(self.menuEdit)
+        self.menuEdit.add_command(label="撤销",command=lambda e=None:self.onKeyboardCtrlZClick(e),accelerator='Ctrl+Z')
+        self.menuEdit.add_command(label="重做",command=lambda e=None:self.onKeyboardCtrlYClick(e),accelerator='Ctrl+Y')
+
         self.menuOptions = Menu(self.mbar, tearoff=False)             #在顶级菜单下创建菜单项
         self.mbar.add_cascade(label=' 选项 ',menu=self.menuOptions) #添加子菜单
         self.tkThemeHelper.addTkObj(self.menuOptions)
@@ -285,6 +291,8 @@ class MainGui(Frame):
         self.initWindow.bind('<Down>', lambda e,arrow=ArrowDirEnum.Down:self.onKeyboardArrowClick(arrow))
         self.initWindow.bind('<Right>', lambda e,arrow=ArrowDirEnum.Right:self.onKeyboardArrowClick(arrow))
         self.initWindow.bind('<Delete>', self.onKeyBoardDeleteClick)
+        self.initWindow.bind('<Control-z>', self.onKeyboardCtrlZClick)
+        self.initWindow.bind('<Control-y>', self.onKeyboardCtrlYClick)
         self.initWindow.bind('<Control-p>', lambda e,mode=ListLineNodeModeEnum.P:self.openViewListLineNode(mode))
         self.initWindow.bind('<Control-r>', lambda e,mode=ListLineNodeModeEnum.R:self.openViewListLineNode(mode))
         self.initWindow.bind('<Control-f>', lambda e,mode=ListLineNodeModeEnum.F:self.openViewListLineNode(mode))
@@ -394,6 +402,11 @@ class MainGui(Frame):
         self.isInVirtualList = False
         self.inVirtualListMousePos = None
 
+        self.tmNowData = None   #当前节点整体数据缓存
+        self.tmNowDataBackup = None     #备份数据缓存
+        self.tlNowIndex = list()    #当前节点顺序，-1表示create节点
+        self.undoRedoHelper = UndoRedoHelper()
+        self.reloadNowData(reloadFromDisk=False)
         self.tlEventHandle = list()
 
         # # 自定义事件
@@ -414,9 +427,9 @@ class MainGui(Frame):
         GlobalValue.VIEW_STACK = list()    #界面栈
         GlobalValue.VIEW_NEED_GRAB_STACK = list()    #界面栈
 
-        # self.refreshColors()
-        self.updateTlNode()
-        # self.test_create_nodes()
+        # # self.refreshColors()
+        # self.updateTlNode()
+        # # self.test_create_nodes()
 
         # # 弹出初始化错误提示
         # showTlInitErrorMsg()
@@ -434,11 +447,21 @@ class MainGui(Frame):
 
         self.tkThemeHelper.update()
 
+        self.updateTlNode()
+
     def initEventListen(self):
         self.removeAllEventListen()
         self.tlEventHandle.append(addEventListener(EventType.Event_NodeChange, self.onEvent_NodeChange))
+        self.tlEventHandle.append(addEventListener(EventType.Event_NodeChangeByIndexKey, self.onEvent_NodeChangeByIndexKey))
         self.tlEventHandle.append(addEventListener(EventType.Event_SettingOptionsChange, self.onEvent_SettingOptionsChange))
         self.tlEventHandle.append(addEventListener(EventType.Event_SettingColorChange, self.onEvent_SettingColorChange))
+        self.tlEventHandle.append(addEventListener(EventType.Event_MainGuiTmNowDataBackupMark, self.onEvent_MainGuiTmNowDataBackupMark))
+        self.tlEventHandle.append(addEventListener(EventType.Event_MainGuiTmNowDataBackupSave, self.onEvent_MainGuiTmNowDataBackupSave))
+        self.tlEventHandle.append(addEventListener(EventType.Event_MainGuiTmNowDataBackupAbandon, self.onEvent_MainGuiTmNowDataBackupAbandon))
+        self.tlEventHandle.append(addEventListener(EventType.Event_MainGuiSaveSingleNodeData, self.onEvent_MainGuiSaveSingleNodeData))
+        self.tlEventHandle.append(addEventListener(EventType.Event_MainGuiSaveSingleNodeDataByIndexKey, self.onEvent_MainGuiSaveSingleNodeDataByIndexKey))
+        self.tlEventHandle.append(addEventListener(EventType.Event_MainGuiMoveNode, self.onEvent_MainGuiMoveNode))
+        self.tlEventHandle.append(addEventListener(EventType.Event_MainGuiMoveNodeByIndexKey, self.onEvent_MainGuiMoveNodeByIndexKey))
 
     def removeAllEventListen(self):
         removeTlEventListener(self.tlEventHandle)
@@ -468,7 +491,8 @@ class MainGui(Frame):
         filePath = filedialog.asksaveasfilename(title='选择保存路径', initialfile=os.path.basename(GlobalValue.NODES_CONFIG_JSON_PATH), defaultextension='.json',filetypes = [("Json文件",".json")])
         if not filePath:
             return
-        exportTempJson(GlobalValue.TEMP_NODE_LIST, filePath, isNodesConfig=True)
+        # exportTempJson(GlobalValue.TEMP_NODE_LIST, filePath, isNodesConfig=True)
+        exportTempJson(GlobalValue.TEMP_TM_NODE_DATA, filePath, isNodesConfig=True)
 
     # 导出当前设置
     def menuExportSetting(self):
@@ -574,9 +598,12 @@ ctrl+tab：切换模式
 
     # 格式化节点配置文件内路径
     def menuFormatNodesConfigPaths(self):
-        # global TEMP_NODE_LIST
-        for i in range(0,len(GlobalValue.TEMP_NODE_LIST)):
-            nodeData = GlobalValue.TEMP_NODE_LIST[i]
+        # # global TEMP_NODE_LIST
+        # for i in range(0,len(GlobalValue.TEMP_NODE_LIST)):
+        #     nodeData = GlobalValue.TEMP_NODE_LIST[i]
+        tmNowData = py3_common.deep_copy_dict(self.tmNowData)
+        for i in range(0,len(tmNowData['tlNode'])):
+            nodeData = tmNowData['tlNode'][i]
             if nodeData['nodeType'] == 'Btn':
                 settingKey = getSettingKey(nodeData)
                 tlPathKeyData = list()
@@ -594,7 +621,8 @@ ctrl+tab：切换模式
                     else:
                         if nodeData[pathKeyData['key']] != '':
                             nodeData[pathKeyData['key']] = os.path.normpath(nodeData[pathKeyData['key']])
-        self.saveTlNodeData()
+        # self.saveTlNodeData()
+        self._setData([], tmNowData)
 
     # 全局执行前询问开关
     def menuGlobalAskBeforeExecuting(self, typeStr):
@@ -660,6 +688,7 @@ ctrl+tab：切换模式
         self.menuSetting()
 
 
+
     # -----------------------------模式选择-----------------------------
     def selectUiMode(self, index):
         if index >= 0 and index < len(TL_UI_MODE_DATA):
@@ -679,11 +708,12 @@ ctrl+tab：切换模式
             self.updateTlNode()
 
             if oldNodeRealIndex != None:
-                newNodeIndex = self.getNodeIndexWithRealNodeIndex(oldNodeRealIndex)
+                newNodeIndex = self.convertIndex(oldNodeRealIndex)
                 # print(newNodeIndex, oldYShift)
-                self.virtualListFrame.jumpToIndex(newNodeIndex, -oldYShift)
+                if newNodeIndex:
+                    self.virtualListFrame.jumpToIndex(newNodeIndex, -oldYShift)
 
-    # 获取现在鼠标附件的节点index和真实节点index
+    # 获取现在鼠标附近的节点index和真实节点index
     # 真实节点index排除Create类型节点
     def getNowMouseNearNodeIndex(self):
         nodeIndex = None
@@ -694,41 +724,69 @@ ctrl+tab：切换模式
         if GlobalValue.UI_MODE == UiModeEnum.Normal:
             return nodeIndex, nodeIndex
         else:
+            # if nodeIndex != None:
+            #     nodeData = GlobalValue.TEMP_NODE_LIST[nodeIndex]
+            #     if nodeData['nodeType'] == 'Create':
+            #         nodeIndex_ = nodeIndex
+            #         nodeIndex = None
+            #         if nodeIndex_ < len(GlobalValue.TEMP_NODE_LIST) - 1:
+            #             nodeIndex = nodeIndex_ + 1
+            #         elif nodeIndex_ > 0:
+            #             nodeIndex = nodeIndex_ - 1
+            # if nodeIndex != None:
+            #     nodeIndex_ = -1
+            #     for i in range(0,len(GlobalValue.TEMP_NODE_LIST)):
+            #         nodeData = GlobalValue.TEMP_NODE_LIST[i]
+            #         if nodeData['nodeType'] != 'Create':
+            #             nodeIndex_ = nodeIndex_ + 1
+            #         if i == nodeIndex:
+            #             break
+            #     return nodeIndex, nodeIndex_
+
+            tlNowIndex = self.tlNowIndex
+            # 位置在create节点上时需要改回普通节点index
             if nodeIndex != None:
-                nodeData = GlobalValue.TEMP_NODE_LIST[nodeIndex]
-                if nodeData['nodeType'] == 'Create':
+                if nodeIndex >= 0 and nodeIndex > len(tlNowIndex) and tlNowIndex[nodeIndex] == -1:
                     nodeIndex_ = nodeIndex
                     nodeIndex = None
-                    if nodeIndex_ < len(GlobalValue.TEMP_NODE_LIST) - 1:
+                    if nodeIndex_ < len(tlNowIndex) - 1: #不在末尾
                         nodeIndex = nodeIndex_ + 1
-                    elif nodeIndex_ > 0:
-                        nodeIndex = nodeIndex_ - 1
+                    elif nodeIndex_ > 0: #在末尾但不在开头
+                        nodeIndex = nodeIndex - 1
             if nodeIndex != None:
-                nodeIndex_ = -1
-                for i in range(0,len(GlobalValue.TEMP_NODE_LIST)):
-                    nodeData = GlobalValue.TEMP_NODE_LIST[i]
-                    if nodeData['nodeType'] != 'Create':
-                        nodeIndex_ = nodeIndex_ + 1
-                    if i == nodeIndex:
-                        break
-                return nodeIndex, nodeIndex_
+                tlIndex = self.tmNowData['tlIndex']
+                nowIndexKey = tlNowIndex[nodeIndex]
+                for i in range(0,len(tlIndex)):
+                    if tlIndex[i] == nowIndexKey:
+                        return nodeIndex, i
         return None, None
 
-    # 真实节点index转节点index
-    def getNodeIndexWithRealNodeIndex(self, realNodeIndex):
-        if GlobalValue.UI_MODE == UiModeEnum.Normal:
-            return realNodeIndex
-        else:
-            nodeIndex = None
-            nodeIndex_ = -1
-            for i in range(0,len(GlobalValue.TEMP_NODE_LIST)):
-                nodeData = GlobalValue.TEMP_NODE_LIST[i]
-                if nodeData['nodeType'] != 'Create':
-                    nodeIndex_ = nodeIndex_ + 1
-                if realNodeIndex == nodeIndex_:
-                    nodeIndex = i
-                    break
-            return nodeIndex
+    # # 真实节点index转节点index
+    # def getNodeIndexWithRealNodeIndex(self, realNodeIndex):
+    #     if GlobalValue.UI_MODE == UiModeEnum.Normal:
+    #         return realNodeIndex
+    #     else:
+    #         # nodeIndex = None
+    #         # nodeIndex_ = -1
+    #         # for i in range(0,len(GlobalValue.TEMP_NODE_LIST)):
+    #         #     nodeData = GlobalValue.TEMP_NODE_LIST[i]
+    #         #     if nodeData['nodeType'] != 'Create':
+    #         #         nodeIndex_ = nodeIndex_ + 1
+    #         #     if realNodeIndex == nodeIndex_:
+    #         #         nodeIndex = i
+    #         #         break
+    #         # return nodeIndex
+    #         try:
+    #             tlIndex = self.tmNowData['tlIndex']
+    #             tlNowIndex = self.tlNowIndex
+    #             indexKey = tlIndex[realNodeIndex]
+    #             for i in range(0,len(tlNowIndex)):
+    #                 if tlNowIndex[i] == indexKey:
+    #                     return i
+    #         except Exception as e:
+    #             # raise e
+    #             pass
+    #         return None
 
     # 将data转换成节点的args
     def convertNodeArgs(self, data=dict()):
@@ -824,7 +882,8 @@ ctrl+tab：切换模式
 
         # # view.rowconfigure(1,weight=1)
 
-        view = ViewNodeSetting(self, index, data)
+        indexKey = self._getIndexKeyByVirtualIndex(index)
+        view = ViewNodeSetting(self, index, indexKey, data)
 
     # 搜索行标记界面
     def openViewListLineNode(self, mode):
@@ -870,19 +929,20 @@ ctrl+tab：切换模式
         return False
 
     def updateTlNode(self):
-        # global TEMP_NODE_LIST
-        self.removeCreateNodeToTlNode()
-        if GlobalValue.UI_MODE == UiModeEnum.Edit:
-            self.addCreateNodeToTlNode()
+        # # global TEMP_NODE_LIST
+        # self.removeCreateNodeToTlNode()
+        # if GlobalValue.UI_MODE == UiModeEnum.Edit:
+        #     self.addCreateNodeToTlNode()
 
-        # # global FORCE_SHOW_SELECT
-        # GlobalValue.FORCE_SHOW_SELECT = False
-        # if self.settingView or self.listLineNodeView:
-        #     GlobalValue.FORCE_SHOW_SELECT = True
+        # # # global FORCE_SHOW_SELECT
+        # # GlobalValue.FORCE_SHOW_SELECT = False
+        # # if self.settingView or self.listLineNodeView:
+        # #     GlobalValue.FORCE_SHOW_SELECT = True
 
-        tlNodeData = list()
-        for i in range(0,len(GlobalValue.TEMP_NODE_LIST)):
-            tlNodeData.append(self.convertNodeArgs(GlobalValue.TEMP_NODE_LIST[i]))
+        # tlNodeData = list()
+        # for i in range(0,len(GlobalValue.TEMP_NODE_LIST)):
+        #     tlNodeData.append(self.convertNodeArgs(GlobalValue.TEMP_NODE_LIST[i]))
+        tlNodeData = self.getTlNodeDataForVirtualList()
         self.virtualListFrame.setTlData(tlNodeData)
 
         # if self.listLineNodeView and self.listLineNodeView.winfo_exists():
@@ -899,6 +959,11 @@ ctrl+tab：切换模式
         # if self.settingView or self.listLineNodeView:
         #     GlobalValue.FORCE_SHOW_SELECT = True
         self.virtualListFrame.virtualListCanvas.refreshNodeByIndex(index, ui=ui, ex=ex)
+
+    def refreshNodeByIndexKey(self, indexKey, ui=True, ex=False):
+        index = self._getVirtualIndexByIndexKey(indexKey)
+        if index != None:
+            self.refreshNodeByIndex(index, ui=ui, ex=ex)
 
     def addCreateNodeToTlNode(self):
         # global TEMP_NODE_LIST
@@ -963,22 +1028,32 @@ ctrl+tab：切换模式
     def moveItem(self, index, shift):
         # global TEMP_NODE_LIST
 
-        # 转换真实index
-        index_ = self.convertIndex(None, index)
-        if index_ == None:
-            return
-        # 还原真实表
-        self.removeCreateNodeToTlNode()
+        # # 转换真实index
+        # index_ = self.convertIndex(None, index)
+        # if index_ == None:
+        #     return
+        # # 还原真实表
+        # self.removeCreateNodeToTlNode()
 
-        toIndex = min(max(index_ + shift, 0), len(GlobalValue.TEMP_NODE_LIST))
-        # py3_common.Logging.debug(index, index_, shift, toIndex)
-        nodeData = GlobalValue.TEMP_NODE_LIST.pop(index_)
-        GlobalValue.TEMP_NODE_LIST.insert(toIndex, nodeData)
+        # toIndex = min(max(index_ + shift, 0), len(GlobalValue.TEMP_NODE_LIST))
+        # # py3_common.Logging.debug(index, index_, shift, toIndex)
+        # nodeData = GlobalValue.TEMP_NODE_LIST.pop(index_)
+        # GlobalValue.TEMP_NODE_LIST.insert(toIndex, nodeData)
 
-        if GlobalValue.UI_MODE == UiModeEnum.Edit:
-            self.addCreateNodeToTlNode()
+        # if GlobalValue.UI_MODE == UiModeEnum.Edit:
+        #     self.addCreateNodeToTlNode()
+
+        tlIndex = py3_common.deep_copy_dict(self.tmNowData['tlIndex'])
+        realIndex = self.convertIndex(None, index)
+        if shift == 0 or (shift > 0 and realIndex == len(tlIndex)-1) or (shift < 0 and realIndex == 0):
+            return index
+        toIndex = min(max(realIndex + shift, 0), len(tlIndex))
+        indexKey = tlIndex.pop(realIndex)
+        tlIndex.insert(toIndex, indexKey)
+        self._setData(['tlIndex'], tlIndex, noUpdateView=True)
 
         # 转换当前index
+        self.refreshTlNowIndex()
         toIndex_ = self.convertIndex(toIndex)
         if toIndex_ == None:
             toIndex_ = index
@@ -986,36 +1061,18 @@ ctrl+tab：切换模式
             self.selectEditItem(toIndex_, False)
 
         self.updateTlNode()
-        self.saveTlNodeData()
-        if not self.virtualListFrame.virtualListCanvas.isIndexInVisualRange(toIndex_, allInRange=True, isNow=True):
-            visualRange = self.virtualListFrame.virtualListCanvas.getScrollFrameVisualRange()
-            nodeData_ = self.virtualListFrame.virtualListCanvas.getNodeDataByIndex(toIndex_)
-            value = 0
-            if nodeData_ and visualRange:
-                if nodeData_['y'] + nodeData_['height'] > visualRange['y'] + visualRange['height']:
-                    value = 1
-            self.jumpToIndex(toIndex_, value=value)
+        # # self.saveTlNodeData()
+        # if not self.virtualListFrame.virtualListCanvas.isIndexInVisualRange(toIndex_, allInRange=True, isNow=True):
+        #     visualRange = self.virtualListFrame.virtualListCanvas.getScrollFrameVisualRange()
+        #     nodeData_ = self.virtualListFrame.virtualListCanvas.getNodeDataByIndex(toIndex_)
+        #     value = 0
+        #     if nodeData_ and visualRange:
+        #         if nodeData_['y'] + nodeData_['height'] > visualRange['y'] + visualRange['height']:
+        #             value = 1
+        #     self.jumpToIndex(toIndex_, value=value)
+        #     # self.jumpToIndex(toIndex_)
+        self.seeIndex(toIndex_)
         return toIndex_
-
-    def convertIndex(self, realIndex=None, virtualIndex=None):
-        if realIndex != None:
-            # 转换成虚拟index
-            tempIndex = -1
-            for i in range(0,len(GlobalValue.TEMP_NODE_LIST)):
-                nodeData = GlobalValue.TEMP_NODE_LIST[i]
-                if nodeData['nodeType'] == 'Line' or nodeData['nodeType'] == 'Btn':
-                    tempIndex += 1
-                if tempIndex == realIndex:
-                    return i
-        elif virtualIndex != None:
-            # 转换成真实index
-            tempIndex = -1
-            for i in range(0,len(GlobalValue.TEMP_NODE_LIST)):
-                nodeData = GlobalValue.TEMP_NODE_LIST[i]
-                if nodeData['nodeType'] == 'Line' or nodeData['nodeType'] == 'Btn':
-                    tempIndex += 1
-                if i == virtualIndex:
-                    return tempIndex
 
     def selectEditItem(self, index=None, update=True):
         # global NOW_SELECT_INDEX
@@ -1023,6 +1080,17 @@ ctrl+tab：切换模式
         GlobalValue.NOW_SELECT_INDEX = index
         if needUpdate:
             self.updateTlNode()
+
+    def seeIndex(self, index):
+        if not self.virtualListFrame.virtualListCanvas.isIndexInVisualRange(index, allInRange=True, isNow=True):
+            visualRange = self.virtualListFrame.virtualListCanvas.getScrollFrameVisualRange()
+            nodeData = self.virtualListFrame.virtualListCanvas.getNodeDataByIndex(index)
+            value = 0
+            if nodeData and visualRange:
+                if nodeData['y'] + nodeData['height'] > visualRange['y'] + visualRange['height']:
+                    value = 1
+            self.jumpToIndex(index, value=value)
+            # self.jumpToIndex(index)
 
     def onKeyboardArrowClick(self, arrow):
         if arrow == ArrowDirEnum.Up:
@@ -1044,6 +1112,48 @@ ctrl+tab：切换模式
             selectIndex = GlobalValue.NOW_SELECT_INDEX
             GlobalValue.NOW_SELECT_INDEX = None
             self.saveNodeData(selectIndex, None, SaveNodeDataOper.Delete)
+
+    # ctrl+z 撤销
+    def onKeyboardCtrlZClick(self, event):
+        py3_common.Logging.debug(self.getClassName(),'onKeyboardCtrlZClick')
+        self._undoOrRedo(isRedo=False)
+
+    # ctrl+y 重做
+    def onKeyboardCtrlYClick(self, event):
+        py3_common.Logging.debug(self.getClassName(),'onKeyboardCtrlYClick')
+        self._undoOrRedo(isRedo=True)
+
+    def _undoOrRedo(self, isRedo=False):
+        if self.tmNowDataBackup != None:
+            # 有备份时冻结撤销重做功能，保证数据干净
+            return
+        indexKey = None
+        # 编辑模式有选中需要特殊处理
+        if GlobalValue.NOW_SELECT_INDEX != None and GlobalValue.UI_MODE == UiModeEnum.Edit:
+            realIndex = self.convertIndex(virtualIndex=GlobalValue.NOW_SELECT_INDEX)
+            try:
+                indexKey = self.tmNowData['tlIndex'][realIndex]
+            except Exception as e:
+                pass
+        suc = None
+        if isRedo:
+            suc = self.undoRedoHelper.redo(self.tmNowData)
+        else:
+            suc = self.undoRedoHelper.undo(self.tmNowData)
+        if suc:
+            self.saveTmNowData()
+            if indexKey == None:
+                # print(self.tmNowData)
+                self.updateTlNode()
+            else:
+                self.refreshTlNowIndex()
+                virtualIndex = self._getVirtualIndexByIndexKey(indexKey)
+                if virtualIndex == None:
+                    GlobalValue.NOW_SELECT_INDEX = None
+                    self.updateTlNode()
+                else:
+                    self.selectEditItem(virtualIndex)
+                    self.seeIndex(virtualIndex)
 
     def onFocus(self, event):
         # if self.listLineNodeView:
@@ -1255,6 +1365,12 @@ ctrl+tab：切换模式
         else:
             self.updateTlNode()
 
+    def onEvent_NodeChangeByIndexKey(self, *args):
+        if args != None and len(args) > 0:
+            self.refreshNodeByIndexKey(*args)
+        else:
+            self.updateTlNode()
+
     def onEvent_SettingColorChange(self):
         # self.refreshColors()
         dispatchEvent(EventType.Event_NodeChange)
@@ -1262,35 +1378,318 @@ ctrl+tab：切换模式
     def onEvent_SettingOptionsChange(self):
         self.refreshOptions()
 
+    # 备份数据
+    def onEvent_MainGuiTmNowDataBackupMark(self):
+        if self.tmNowDataBackup == None:
+            self.tmNowDataBackup = py3_common.deep_copy_dict(self.tmNowData)
+
+    # 保存当前数据
+    def onEvent_MainGuiTmNowDataBackupSave(self):
+        if self.tmNowDataBackup != None:
+            tmOldData = py3_common.deep_copy_dict(self.tmNowDataBackup)
+            tmNowData = py3_common.deep_copy_dict(self.tmNowData)
+            self._setData([], tmOldData, noUpdateView=True)
+            self.tmNowDataBackup = None
+            self._setData([], tmNowData)
+
+    # 抛弃当前数据
+    def onEvent_MainGuiTmNowDataBackupAbandon(self):
+        if self.tmNowDataBackup != None:
+            tmNowData = py3_common.deep_copy_dict(self.tmNowDataBackup)
+            self._setData([], tmNowData)
+            self.tmNowDataBackup = None
+
+    # 保存单个节点数据
+    def onEvent_MainGuiSaveSingleNodeData(self, index, nodeData, oper=SaveNodeDataOper.Edit):
+        self.saveNodeData(index, nodeData, oper=oper)
+
+    def onEvent_MainGuiSaveSingleNodeDataByIndexKey(self, indexKey, nodeData, oper=SaveNodeDataOper.Edit):
+        index = self._getVirtualIndexByIndexKey(indexKey)
+        if index != None:
+            self.onEvent_MainGuiSaveSingleNodeData(index, nodeData, oper)
+
+    # 移动节点
+    def onEvent_MainGuiMoveNode(self, index, shift):
+        newIndex = self.moveItem(index, shift)
+        dispatchEvent(EventType.Event_MainGuiNodeIndexChange, index, newIndex)
+
+    def onEvent_MainGuiMoveNodeByIndexKey(self, indexKey, shift):
+        index = self._getVirtualIndexByIndexKey(indexKey)
+        if index != None:
+            self.onEvent_MainGuiMoveNode(index, shift)
+
+
 
     # -----------------------------数据处理-----------------------------
-    # 保存单个节点数据
-    def saveNodeData(self, index, nodeData, oper=SaveNodeDataOper.Edit):
-        # global TEMP_NODE_LIST
-        isChange = False
-        if oper == SaveNodeDataOper.Insert:
-            GlobalValue.TEMP_NODE_LIST.insert(index, nodeData)
-            isChange = True
-        elif oper == SaveNodeDataOper.Edit:
-            if len(GlobalValue.TEMP_NODE_LIST) > index:
-                GlobalValue.TEMP_NODE_LIST[index] = nodeData
-                isChange = True
-        elif oper == SaveNodeDataOper.Delete:
-            if len(GlobalValue.TEMP_NODE_LIST) > index:
-                addDeletedNodeBackup(GlobalValue.TEMP_NODE_LIST[index])
-                del GlobalValue.TEMP_NODE_LIST[index]
-                isChange = True
-        if isChange:
-            self.saveTlNodeData()
+    # 刷新缓存数据
+    def reloadNowData(self, reloadFromDisk=True, isUpdateView=False):
+        py3_common.Logging.debug(self.getClassName(),'reloadNowData')
+        if reloadFromDisk:
+            refreshNodesConfig()
+        if self.tmNowData == None:
+            self.tmNowData = py3_common.deep_copy_dict(GlobalValue.TEMP_TM_NODE_DATA)
+        else:
+            tmNowData = py3_common.deep_copy_dict(GlobalValue.TEMP_TM_NODE_DATA)
+            self._setData([], tmNowData)
+
+        if isUpdateView:
             self.updateTlNode()
 
-    # 保存全部节点数据
-    def saveTlNodeData(self):
+    # 删除数据
+    def delData(self, tlKey):
+        py3_common.Logging.debug(self.getClassName(),'delData')
+        self._setData(tlKey, None, isDel=True)
+
+    # 设置数据
+    def _setData(self, tlKey, value, isDel=False, isInsert=False, noUpdateView=False):
+        if self.tmNowDataBackup == None:
+            self.undoRedoHelper.setValueWithTlKey(self.tmNowData, tlKey, value, isDel=isDel, isInsert=isInsert)
+            self.saveTmNowData()
+        else:
+            # 有备份时不记入撤销重做
+            py3_common.setValueWithTlKey(self.tmNowData, tlKey, value, isDel=isDel, isInsert=isInsert)
+        if not noUpdateView:
+            self.updateTlNode()
+
+    def saveTmNowData(self):
+        GlobalValue.TEMP_TM_NODE_DATA = self.tmNowData
         if not os.path.isfile(GlobalValue.NODES_CONFIG_JSON_PATH):
             py3_common.Logging.info(u'没有找到配置json，初始化')
             createNodesConfigJson()
         else:
             dumpNodesConfigList()
+
+    # 获取给虚拟列表ui使用的节点数据
+    def getTlNodeDataForVirtualList(self):
+        tmNowData = py3_common.deep_copy_dict(self.tmNowData)
+        tlNode = tmNowData['tlNode']
+
+        # 先算出顺序
+        # tlIndex = tmNowData['tlIndex']  #真正的顺序，不带create节点
+        # tlNode = tmNowData['tlNode']
+        # tlNowIndex = py3_common.deep_copy_dict(tlIndex)
+        # if GlobalValue.UI_MODE == UiModeEnum.Edit:
+        #     if len(tlIndex) > 0:
+        #         tlAddIndex = list()
+        #         # Line为分隔 末尾添加CreateNode
+        #         lastLineIndex = -1
+        #         for i in range(0,len(tlIndex)):
+        #             index = tlIndex[i]
+        #             try:
+        #                 nodeData = tlNode[index]
+        #                 if nodeData['nodeType'] == 'Line' and i >= lastLineIndex:
+        #                     tlAddIndex.insert(0, i)     #倒序记录
+        #                     lastLineIndex = i
+        #             except Exception as e:
+        #                 # raise e
+        #                 pass
+
+        #         for i in range(0,len(tlAddIndex)):
+        #             tlNowIndex.insert(tlAddIndex[i], -1)
+        #         # 尾部加一个
+        #         tlNowIndex.append(-1)
+        #     else:
+        #         tlNowIndex.append(-1)
+        tlNowIndex = self.refreshTlNowIndex(tmNowData)
+
+        # 计算节点数据
+        tlNodeData = list()
+        createNodeData = {'nodeType':'Create'}
+        createNodeData = self.convertNodeArgs(createNodeData)
+        for i in range(0,len(tlNowIndex)):
+            index = tlNowIndex[i]
+            if index == -1:
+                tlNodeData.append(py3_common.deep_copy_dict(createNodeData))
+            else:
+                try:
+                    nodeData = tlNode[index]
+                    tlNodeData.append(self.convertNodeArgs(nodeData))
+                except Exception as e:
+                    # raise e
+                    pass
+
+        # # 记录当前顺序
+        # self.tlNowIndex = tlNowIndex
+        return tlNodeData
+
+    # 重新算出顺序
+    def refreshTlNowIndex(self, tmNowData=None):
+        if tmNowData == None:
+            tmNowData = py3_common.deep_copy_dict(self.tmNowData)
+        tlIndex = tmNowData['tlIndex']  #真正的顺序，不带create节点
+        tlNode = tmNowData['tlNode']
+        tlNowIndex = py3_common.deep_copy_dict(tlIndex)
+        if GlobalValue.UI_MODE == UiModeEnum.Edit:
+            if len(tlIndex) > 0:
+                tlAddIndex = list()
+                # Line为分隔 末尾添加CreateNode
+                lastLineIndex = -1
+                for i in range(0,len(tlIndex)):
+                    index = tlIndex[i]
+                    try:
+                        nodeData = tlNode[index]
+                        if nodeData['nodeType'] == 'Line' and i >= lastLineIndex:
+                            tlAddIndex.insert(0, i)     #倒序记录
+                            lastLineIndex = i
+                    except Exception as e:
+                        # raise e
+                        pass
+
+                for i in range(0,len(tlAddIndex)):
+                    tlNowIndex.insert(tlAddIndex[i], -1)
+                # 尾部加一个
+                tlNowIndex.append(-1)
+            else:
+                tlNowIndex.append(-1)
+        # 记录当前顺序
+        self.tlNowIndex = tlNowIndex
+        return tlNowIndex
+
+    # 保存单个节点数据
+    def saveNodeData(self, index, nodeData, oper=SaveNodeDataOper.Edit):
+        # global TEMP_NODE_LIST
+        # isChange = False
+        if oper == SaveNodeDataOper.Insert:
+            # GlobalValue.TEMP_NODE_LIST.insert(index, nodeData)
+            # isChange = True
+            insertIndex = self._getNodeDataInsertIndex(index)
+            if insertIndex != None:
+                tmNowData = py3_common.deep_copy_dict(self.tmNowData)
+                tmNowData['tlNode'].append(nodeData)
+                tmNowData['tlIndex'].insert(insertIndex, len(tmNowData['tlNode'])-1)
+                self._setData([], tmNowData)
+        elif oper == SaveNodeDataOper.Edit:
+            # if len(GlobalValue.TEMP_NODE_LIST) > index:
+            #     GlobalValue.TEMP_NODE_LIST[index] = nodeData
+            #     isChange = True
+            tlKey = self.getNodeDataTlKeyByVirtualIndex(index)
+            if tlKey != None:
+                self._setData(tlKey, nodeData)
+        elif oper == SaveNodeDataOper.Delete:
+            # if len(GlobalValue.TEMP_NODE_LIST) > index:
+            #     addDeletedNodeBackup(GlobalValue.TEMP_NODE_LIST[index])
+            #     del GlobalValue.TEMP_NODE_LIST[index]
+            #     isChange = True
+            # 只删顺序不删实际节点数据
+            realIndex = self.convertIndex(virtualIndex=index)
+            tlIndex = py3_common.deep_copy_dict(self.tmNowData['tlIndex'])
+            del tlIndex[realIndex]
+            self._setData(['tlIndex'], tlIndex)
+        # if isChange:
+        #     self.saveTlNodeData()
+        #     self.updateTlNode()
+
+    # # 保存全部节点数据
+    # def saveTlNodeData(self):
+    #     GlobalValue.TEMP_TM_NODE_DATA = self.tmNowData
+    #     if not os.path.isfile(GlobalValue.NODES_CONFIG_JSON_PATH):
+    #         py3_common.Logging.info(u'没有找到配置json，初始化')
+    #         createNodesConfigJson()
+    #     else:
+    #         dumpNodesConfigList()
+
+    """
+    真实节点index和虚拟列表index相互转换
+    参数:
+    realIndex:int 真实节点index
+    virtualIndex:int 虚拟列表上的index
+    返回:
+    转换后的index，转换失败返回None
+    """
+    def convertIndex(self, realIndex=None, virtualIndex=None):
+        tlIndex = self.tmNowData['tlIndex']
+        tlNowIndex = self.tlNowIndex
+        if realIndex != None:
+            # 转换成虚拟index
+            # tempIndex = -1
+            # for i in range(0,len(GlobalValue.TEMP_NODE_LIST)):
+            #     nodeData = GlobalValue.TEMP_NODE_LIST[i]
+            #     if nodeData['nodeType'] == 'Line' or nodeData['nodeType'] == 'Btn':
+            #         tempIndex += 1
+            #     if tempIndex == realIndex:
+            #         return i
+            try:
+                indexKey = tlIndex[realIndex]
+                for i in range(0,len(tlNowIndex)):
+                    if tlNowIndex[i] == indexKey:
+                        return i
+            except Exception as e:
+                # raise e
+                pass
+        elif virtualIndex != None:
+            # 转换成真实index
+            # tempIndex = -1
+            # for i in range(0,len(GlobalValue.TEMP_NODE_LIST)):
+            #     nodeData = GlobalValue.TEMP_NODE_LIST[i]
+            #     if nodeData['nodeType'] == 'Line' or nodeData['nodeType'] == 'Btn':
+            #         tempIndex += 1
+            #     if i == virtualIndex:
+            #         return tempIndex
+            try:
+                indexKey = tlNowIndex[virtualIndex]
+                if indexKey == -1:
+                    return None
+                for i in range(0,len(tlIndex)):
+                    if tlIndex[i] == indexKey:
+                        return i
+            except Exception as e:
+                # raise e
+                pass
+        return None
+
+    # 根据虚拟列表上的index获取数据tlKey
+    def getNodeDataTlKeyByVirtualIndex(self, virtualIndex):
+        indexKey = self._getIndexKeyByVirtualIndex(virtualIndex)
+        if indexKey != None:
+            return ['tlNode', indexKey]
+        return None
+
+    # 根据虚拟列表上的index获取节点数据
+    def getNodeDataByVirtualIndex(self, virtualIndex, deepCopy=True):
+        tlKey = self.getNodeDataTlKeyByVirtualIndex(virtualIndex)
+        if tlKey == None:
+            return None
+        value, suc = py3_common.getValueWithTlKey(self.tmNowData, tlKey)
+        if suc:
+            if deepCopy and (isinstance(value, dict) or isinstance(value, list)):
+                value = py3_common.deep_copy_dict(value)
+            return value
+        return None
+
+    # 获取真实插入位置
+    def _getNodeDataInsertIndex(self, virtualIndex):
+        insertIndex = None
+        if virtualIndex == 0:
+            insertIndex = 0
+        elif virtualIndex > 0:
+            realIndex = self.convertIndex(virtualIndex=virtualIndex-1)
+            if realIndex != None:
+                insertIndex = realIndex + 1
+        return insertIndex
+
+    # 根据indexKey获取虚拟列表上的index
+    def _getVirtualIndexByIndexKey(self, indexKey):
+        if indexKey == -1:
+            return None
+        tlNowIndex = self.tlNowIndex
+        for i in range(0,len(tlNowIndex)):
+            if tlNowIndex[i] == indexKey:
+                return i
+        return None
+
+    # 根据虚拟列表上的index获取indexKey
+    def _getIndexKeyByVirtualIndex(self, virtualIndex):
+        realIndex = self.convertIndex(virtualIndex=virtualIndex)
+        if realIndex == None:
+            return None
+        tlIndex = self.tmNowData['tlIndex']
+        try:
+            indexKey = tlIndex[realIndex]
+            return indexKey
+        except Exception as e:
+            # raise e
+            pass
+        return None
 
 
 

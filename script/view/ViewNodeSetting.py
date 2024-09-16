@@ -39,10 +39,11 @@ class ViewNodeSetting(BaseView):
     参数:
     initWindow:tkObj 父界面
     """
-    def __init__(self, initWindow, index, data=None):
+    def __init__(self, initWindow, index, indexKey=None, data=None):
         super(ViewNodeSetting, self).__init__(initWindow)
         self.initWindow = initWindow
         self.index = index
+        self.indexKey = indexKey
         self.data = data
         self.tempData = py3_common.deep_copy_dict(data) if data else dict()
         self.tmExUi = dict()
@@ -68,6 +69,8 @@ class ViewNodeSetting(BaseView):
         self.bind('<Alt-c>', lambda e:self.copyNodeConfig())
         self.bind('<Alt-v>', lambda e:self.pasteNodeConfig())
         self.bind('<Alt-s>', lambda e:self.testSaveExeIcon())
+
+        self.initEventListen()
 
         self.dnd = TkDnD(self)
 
@@ -255,6 +258,11 @@ class ViewNodeSetting(BaseView):
         self.tkThemeHelper.update()
 
 
+    def initEventListen(self):
+        self.removeAllEventListen()
+        self.addEventListener(EventType.Event_MainGuiNodeIndexChange, self.onEvent_MainGuiNodeIndexChange)
+
+
 
 
     # -----------------------------界面刷新-----------------------------
@@ -395,9 +403,11 @@ class ViewNodeSetting(BaseView):
 
     # 上下移动
     def onBtnUpDownClick(self, value):
-        index_ = GlobalValue.INIT_WINDOW_GUI.moveItem(self.index, value)
-        if index_ != None:
-            self.index = index_
+        dispatchEvent(EventType.Event_MainGuiTmNowDataBackupMark)
+        # index_ = GlobalValue.INIT_WINDOW_GUI.moveItem(self.index, value)
+        dispatchEvent(EventType.Event_MainGuiMoveNodeByIndexKey, self.indexKey, value)
+        # if index_ != None:
+        #     self.index = index_
 
     # 打开所在位置
     def onBtnOpenDirClick(self):
@@ -420,13 +430,16 @@ class ViewNodeSetting(BaseView):
         if not value:
             return
         tempData = self.tempData
-        GlobalValue.INIT_WINDOW_GUI.saveNodeData(self.index, tempData, SaveNodeDataOper.Delete)
+        # GlobalValue.INIT_WINDOW_GUI.saveNodeData(self.index, tempData, SaveNodeDataOper.Delete)
+        dispatchEvent(EventType.Event_MainGuiSaveSingleNodeDataByIndexKey, self.indexKey, tempData, SaveNodeDataOper.Delete)
         self.close()
+        dispatchEvent(EventType.Event_MainGuiTmNowDataBackupSave)
 
     def onBtnCancel(self):
-        self.revertOldColor()
+        # self.revertOldColor()
         # 关闭
         self.close()
+        dispatchEvent(EventType.Event_MainGuiTmNowDataBackupAbandon)
 
     def onBtnConfirm(self):
         result = self.saveTempData()
@@ -435,10 +448,19 @@ class ViewNodeSetting(BaseView):
 
             # 关闭
             self.close()
+            dispatchEvent(EventType.Event_MainGuiTmNowDataBackupSave)
 
     def onBtnTipsAskExeClick(self):
         tipsStr = u'该项涵义根据 "全局 执行前询问" 选项状态变化'
         messagebox.showinfo('帮助', tipsStr, parent=self)
+
+
+
+
+    # -----------------------------事件响应-----------------------------
+    def onEvent_MainGuiNodeIndexChange(self, oldIndex, newIndex):
+        if oldIndex == self.index:
+            self.setIndex(newIndex)
 
 
 
@@ -487,12 +509,15 @@ class ViewNodeSetting(BaseView):
         if not tempData:
             return False
 
-        if self.data == None:
+        dispatchEvent(EventType.Event_MainGuiTmNowDataBackupMark)
+        if self.data == None or self.indexKey == None:
             # 插入
-            GlobalValue.INIT_WINDOW_GUI.saveNodeData(self.index, tempData, SaveNodeDataOper.Insert)
+            # GlobalValue.INIT_WINDOW_GUI.saveNodeData(self.index, tempData, SaveNodeDataOper.Insert)
+            dispatchEvent(EventType.Event_MainGuiSaveSingleNodeData, self.index, tempData, SaveNodeDataOper.Insert)
         else:
             # 修改
-            GlobalValue.INIT_WINDOW_GUI.saveNodeData(self.index, tempData, SaveNodeDataOper.Edit)
+            # GlobalValue.INIT_WINDOW_GUI.saveNodeData(self.index, tempData, SaveNodeDataOper.Edit)
+            dispatchEvent(EventType.Event_MainGuiSaveSingleNodeDataByIndexKey, self.indexKey, tempData, SaveNodeDataOper.Edit)
 
         return True
 
@@ -591,9 +616,12 @@ class ViewNodeSetting(BaseView):
                     del tempData[k]
             else:
                 tempData[k] = tmData[k]
-        result = self.saveTempData()
-        if result and refresh:
-            dispatchEvent(EventType.Event_NodeChange, self.index)
+        # 修改旧节点才刷新主界面
+        if self.data != None:
+            result = self.saveTempData()
+            if result and refresh:
+                # dispatchEvent(EventType.Event_NodeChange, self.index)
+                dispatchEvent(EventType.Event_NodeChangeByIndexKey, self.indexKey)
 
 
 

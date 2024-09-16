@@ -9,13 +9,32 @@ from . import py3_common
 class EventType:
     Event_SettingColorChange = 'Event_SettingColorChange'
     Event_SettingOptionsChange = 'Event_SettingOptionsChange'
-    Event_NodeChange = 'Event_NodeChange'
 
     Event_ViewShow = 'Event_ViewShow'
     Event_ViewClose = 'Event_ViewClose'
     Event_ViewFocusIn = 'Event_ViewFocusIn'
     Event_ViewNeedGrabShow = 'Event_ViewNeedGrabShow'
     Event_ViewNeedGrabClose = 'Event_ViewNeedGrabClose'
+
+    # 节点相关
+    Event_NodeChange = 'Event_NodeChange'
+    Event_NodeChangeByIndexKey = 'Event_NodeChangeByIndexKey'
+
+    # 主界面相关
+    Event_MainGuiTmNowDataBackupMark = 'Event_MainGuiTmNowDataBackupMark'
+    Event_MainGuiTmNowDataBackupSave = 'Event_MainGuiTmNowDataBackupSave'
+    Event_MainGuiTmNowDataBackupAbandon = 'Event_MainGuiTmNowDataBackupAbandon'
+    Event_MainGuiSaveSingleNodeData = 'Event_MainGuiSaveSingleNodeData'
+    Event_MainGuiSaveSingleNodeDataByIndexKey = 'Event_MainGuiSaveSingleNodeDataByIndexKey'
+    Event_MainGuiMoveNode = 'Event_MainGuiMoveNode'
+    Event_MainGuiMoveNodeByIndexKey = 'Event_MainGuiMoveNodeByIndexKey'
+    Event_MainGuiNodeIndexChange = 'Event_MainGuiNodeIndexChange'
+
+    # 撤销重做插件
+    Event_UndoRedoHelperUndo = 'Event_UndoRedoHelperUndo'
+    Event_UndoRedoHelperRedo = 'Event_UndoRedoHelperRedo'
+    Event_UndoRedoHelperRecordOper = 'Event_UndoRedoHelperRecordOper'
+    Event_UndoRedoHelperDataChange = 'Event_UndoRedoHelperDataChange'
 
 
 # 事件代理

@@ -792,7 +792,7 @@ def isSlash(c):
 
 
 # 深拷贝 分层遍历
-def deep_copy_dict(base_dict, isOrdered=None):
+def deep_copy_dict(base_dict, isOrdered=None, isIgnoreType=False):
     temp_dict = None
     if isinstance(base_dict, dict):
         if isOrdered == None:
@@ -801,8 +801,11 @@ def deep_copy_dict(base_dict, isOrdered=None):
     elif isinstance(base_dict, list):
         temp_dict = list()
     else:
-        Logging.error(u'数据类型只能是dict|list')
-        return False
+        if isIgnoreType:
+            return base_dict
+        else:
+            Logging.error(u'数据类型只能是dict|list')
+            return False
 
     remain_copy_list = list()
     remain_copy_list.append([base_dict, temp_dict])
