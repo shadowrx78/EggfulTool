@@ -145,7 +145,7 @@ class LineNode(tkVirtualListHelper.BaseNode):
         if GlobalValue.UI_MODE == UiModeEnum.Edit:
             try:
                 args = self.args
-                args['mainView'].openViewNodeSetting(self.getExData('index'), args)
+                GlobalValue.INIT_WINDOW_GUI.openViewNodeSetting(self.getExData('index'), args)
             except Exception as e:
                 py3_common.Logging.error(e)
 
@@ -154,12 +154,12 @@ class LineNode(tkVirtualListHelper.BaseNode):
         if GlobalValue.UI_MODE == UiModeEnum.Normal:
             try:
                 args = self.args
-                args['mainView'].openViewNodeSetting(self.getExData('index'), args)
+                GlobalValue.INIT_WINDOW_GUI.openViewNodeSetting(self.getExData('index'), args)
             except Exception as e:
                 py3_common.Logging.error(e)
         elif GlobalValue.UI_MODE == UiModeEnum.Edit:
             args = self.args
-            args['mainView'].selectEditItem(self.getExData('index'))
+            GlobalValue.INIT_WINDOW_GUI.selectEditItem(self.getExData('index'))
 
     def setExData(self, exData, update=True):
         super(LineNode, self).setExData(exData, update)

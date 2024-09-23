@@ -18,6 +18,8 @@ from collections import OrderedDict
 
 from sys import platform
 
+from . import py3_common
+
 # import ccbparser
 # import plistlib
 
@@ -228,6 +230,12 @@ class BaseNode(Frame):
         if autoInit:
             self.initUi()
 
+    def __del__(self):
+        py3_common.Logging.info2(self.getClassName(),'__del__')
+
+    def getClassName(self):
+        return self.__class__.__name__
+
     def initUi(self):
         self.bind('<Configure>', self.onConfigure)
         # self.updateArgs(self.args)
@@ -365,6 +373,12 @@ class VirtualListCanvas(Canvas):
             self.padding['h'] = 0
 
         self.initUi()
+
+    def __del__(self):
+        py3_common.Logging.info2(self.getClassName(),'__del__')
+
+    def getClassName(self):
+        return self.__class__.__name__
 
     def initUi(self):
         self.rowconfigure(0,weight=1)
@@ -728,26 +742,190 @@ class VirtualListCanvas(Canvas):
         return True
 
     # 根据pos获取最近的index
-    # 不是实际距离最近，会按行划分
-    # pos是相对画布左上角的xy坐标
-    def getNearIndexWithPos(self, pos, visualRange=None):
+    # pos是以画布组件左上角为原点的xy坐标
+    def getNearIndexWithPos(self, pos, visualRange=None, filters=None):
         if not visualRange:
             visualRange = self.getScrollFrameVisualRange()
         realPos = {'x':pos['x'] + visualRange['x'], 'y':pos['y'] + visualRange['y']}
+        return self.getNearIndexWithPosInCanvas(realPos, visualRange=visualRange, filters=filters)
+
+    # 根据画布内pos获取最近的index
+    # pos是在画布内的实际坐标
+    def getNearIndexWithPosInCanvas(self, pos, visualRange=None, filters=None):
+        if not visualRange:
+            visualRange = self.getScrollFrameVisualRange()
+
+        # 先算出行
+        tlNodeData = self.getOneLineTlNodeDataWithPosInCanvas(pos, visualRange=visualRange, filters=filters)
+
+        if tlNodeData != None and len(tlNodeData) > 0:
+            lBorderNode = tlNodeData[0]
+            rBorderNode = tlNodeData[len(tlNodeData)-1]
+            if pos['x'] <= lBorderNode['x']:
+                return lBorderNode['index']
+            elif pos['x'] >= rBorderNode['x'] + rBorderNode['width']:
+                return rBorderNode['index']
+            else:
+                tlBorderX = list()
+                for i in range(0,len(tlNodeData)):
+                    tempX = tlNodeData[i]['x'] + tlNodeData[i]['width']
+                    if i < len(tlNodeData) - 1:
+                        paddingX = tlNodeData[i+1]['x'] - tempX
+                        tlBorderX.append(tempX+(paddingX/2))
+                    else:
+                        tlBorderX.append(tempX)
+                posX = pos['x']
+                index = -1
+                if posX > tlBorderX[len(tlBorderX)-1]:
+                    index = len(tlBorderX)-1
+                elif posX <= tlBorderX[0]:
+                    index = 0
+                else:
+                    for i in range(0,len(tlBorderX)-1):
+                        if posX > tlBorderX[i] and posX <= tlBorderX[i+1]:
+                            index = i+1
+                if index >= 0:
+                    return tlNodeData[index]['index']
+        return None
+
+    # 根据矩形获取插入index
+    # rect坐标是以画布组件左上角为原点的xy坐标
+    # rect结构例子：{'x':0,'y':0,'width':1,'height':1}
+    # filters:筛选节点的方法，filters(tlNodeData) -> tlNodeData
+    def getInsertIndexWithRect(self, rect, visualRange=None, filters=None):
+        if not visualRange:
+            visualRange = self.getScrollFrameVisualRange()
+        realRect = {'x':rect['x'] + visualRange['x'], 'y':rect['y'] + visualRange['y'], 'width':rect['width'], 'height':rect['height']}
+        return self.getInsertIndexWithRectInCanvas(rect, visualRange=visualRange, filters=filters)
+
+    # 根据矩形获取插入index
+    # rect坐标是在画布内的实际坐标
+    # rect结构例子：{'x':0,'y':0,'width':1,'height':1}
+    # filters:筛选节点的方法，filters(tlNodeData) -> tlNodeData
+    def getInsertIndexWithRectInCanvas(self, rect, visualRange=None, filters=None):
+        if not visualRange:
+            visualRange = self.getScrollFrameVisualRange()
+
+        pos = self.getRectPosWithAnchor(rect, anchor={'x':0.5, 'y':0.5})
+        paddingW = self.padding['w']
+        width_max = self.scrollFrame.winfo_width()  #最大宽度
+
+        # 先算出行
+        tlNodeData_ = self.getOneLineTlNodeDataWithPosInCanvas(pos, visualRange=visualRange)
+        tlNodeData = None
+        if filters:
+            try:
+                tlNodeData = filters(tlNodeData_)
+            except Exception as e:
+                # raise e
+                pass
+        if tlNodeData == None:
+            tlNodeData = tlNodeData_
+
+        # 算x轴
+        if tlNodeData != None and len(tlNodeData) > 0:
+            # 先算出能放在当前行的最大行内index
+            maxIndex = -1
+            if rect['width'] >= width_max:
+                # 本身超出一行
+                maxIndex = 0
+            else:
+                # 倒序算
+                for i in range(len(tlNodeData)-1,0,-1):
+                    nodeData = tlNodeData[i]
+                    if nodeData['x'] + nodeData['width'] + paddingW + rect['width'] <= width_max:
+                        maxIndex = i + 1
+                        break
+                if maxIndex < 0:
+                    maxIndex = 0
+            if maxIndex >= 0:
+                # 以各组件中心点为边界
+                tlBorderX = list()
+                for i in range(0,len(tlNodeData)):
+                    nodeData = tlNodeData[i]
+                    tlBorderX.append(nodeData['x'] + (nodeData['width']/2))
+
+                posX = pos['x']
+                index = -1
+                for i in range(0,len(tlBorderX)):
+                    if posX < tlBorderX[i]:
+                        index = i
+                    elif i < len(tlBorderX)-1 and posX > tlBorderX[i] and posX <= tlBorderX[i+1]:
+                        index = i + 1
+                    if index >= 0:
+                        break
+                if index < 0:
+                    index = len(tlBorderX)
+                index = min(index, maxIndex)
+
+                if index >= len(tlNodeData):
+                    return tlNodeData[len(tlNodeData)-1]['index'] + 1
+                else:
+                    return tlNodeData[index]['index']
+        elif tlNodeData_ != None and len(tlNodeData_) > 0:
+            # 有可能整行都被筛选掉了
+            return tlNodeData_[0]['index']
+        return None
+
+    # 根据pos获取所在行节点数据
+    # pos是以画布组件左上角为原点的xy坐标
+    def getOneLineTlNodeDataWithPos(self, pos, visualRange=None, filters=None, shiftLine=0):
+        if not visualRange:
+            visualRange = self.getScrollFrameVisualRange()
+        realPos = {'x':pos['x'] + visualRange['x'], 'y':pos['y'] + visualRange['y']}
+        return self.getOneLineTlNodeDataWithPosInCanvas(realPos, visualRange=visualRange, filters=filters, shiftLine=shiftLine)
+
+    # 根据画布内pos获取所在行节点数据
+    # pos是在画布内的实际坐标
+    def getOneLineTlNodeDataWithPosInCanvas(self, pos, visualRange=None, filters=None, shiftLine=0):
+        if not visualRange:
+            visualRange = self.getScrollFrameVisualRange()
 
         paddingW = self.padding['w']
         paddingH = self.padding['h']
         tlLineNodeData, nowY = self._getTlLineNodeData(paddingW, paddingH)
+        tlNodeData = None  #所在行的所有节点数据
+
+        # 算出行
         for i in range(0,len(tlLineNodeData)):
-            tlNodeData = tlLineNodeData[i]
-            nodeData = tlNodeData[0]
-            if nodeData and nodeData['y'] > realPos['y']:
+            tlNodeData_ = tlLineNodeData[i]
+            nodeData = tlNodeData_[0]
+            if nodeData and nodeData['y'] > pos['y']:
                 if i > 0 and i < len(tlLineNodeData):
-                    return tlLineNodeData[i-1][0]['index']
-                break
-        if realPos['y'] <= visualRange['y'] + visualRange['height'] and len(tlLineNodeData) > 0:
-            return tlLineNodeData[len(tlLineNodeData)-1][0]['index']
-        return None
+                    lineIndex = min(max(i-1 + shiftLine, 0), len(tlLineNodeData)-1)
+                    tlNodeData = tlLineNodeData[lineIndex]
+                    break
+        if tlNodeData == None and pos['y'] <= visualRange['y'] + visualRange['height'] and len(tlLineNodeData) > 0:
+            lineIndex = min(max(len(tlLineNodeData)-1 + shiftLine, 0), len(tlLineNodeData)-1)
+            tlNodeData = tlLineNodeData[lineIndex]
+
+        # 筛选
+        tlNodeData_ = None
+        if filters:
+            try:
+                tlNodeData_ = filters(tlNodeData)
+            except Exception as e:
+                # raise e
+                pass
+        if tlNodeData_ != None:
+            tlNodeData = tlNodeData_
+
+        return tlNodeData
+
+    # 根据锚点构建矩形
+    def getRectWithAnchor(self, posX, posY, width, height, anchor={'x':0.5, 'y':0.5}):
+        rect = dict()
+        rect['width'] = width
+        rect['height'] = height
+        rect['x'] = posX - (width*anchor['x'])
+        rect['y'] = posY - (height*anchor['y'])
+        return rect
+
+    # 根据锚点获取矩形坐标
+    def getRectPosWithAnchor(self, rect, anchor={'x':0.5, 'y':0.5}):
+        posX = rect['x'] + (rect['width']*anchor['x'])
+        posY = rect['y'] + (rect['height']*anchor['y'])
+        return {'x':posX, 'y':posY}
 
     # 获取index的节点在可视范围的y偏移
     def getIndexVisualYShift(self, index, visualRange=None):
@@ -924,6 +1102,12 @@ class VirtualListFrame(Frame):
         super(VirtualListFrame, self).__init__(initWindow, **kwargs)
         self.args = args
         self.initUi()
+
+    def __del__(self):
+        py3_common.Logging.info2(self.getClassName(),'__del__')
+
+    def getClassName(self):
+        return self.__class__.__name__
 
     def initUi(self):
         self.rowconfigure(0,weight=1)

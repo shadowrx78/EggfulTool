@@ -86,6 +86,6 @@ class CreateNode(tkVirtualListHelper.BaseNode):
             #     # dirPath = os.path.dirname(os.path.abspath(path_))
             #     result = py3_common.popen('explorer /select,"'+ os.path.abspath(path_) + '"')
             #     # py3_common.Logging.info(result)
-            args['mainView'].openViewNodeSetting(self.getExData('index'))
+            GlobalValue.INIT_WINDOW_GUI.openViewNodeSetting(self.getExData('index'))
         except Exception as e:
             py3_common.Logging.error(e)

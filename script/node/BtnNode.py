@@ -109,10 +109,13 @@ class BtnNode(tkVirtualListHelper.BaseNode):
         self.button.grid(row=0,column=0,sticky='nsew')
 
         self.button.bind('<Button-3>', self.onBtnRightClick)
-        self.button.bind('<FocusIn>', lambda e:GlobalValue.INIT_WINDOW.focus_force())
+        # self.button.bind('<FocusIn>', lambda e:GlobalValue.INIT_WINDOW.focus_force())
+        self.button.bind('<FocusIn>', self.onFocusIn)
         self.labelType.bind('<Button-3>', self.onBtnRightClick)
         self.frame1.bind('<Button-3>', self.onBtnRightClick)
         self.frameBtn.bind('<Button-3>', self.onBtnRightClick)
+        # self.button.bind('<Motion>', self.onMotion)
+        # self.button.bind('<B3-Motion>', self.onMotion)
 
         self.updateArgs(args)
 
@@ -269,20 +272,31 @@ class BtnNode(tkVirtualListHelper.BaseNode):
         elif GlobalValue.UI_MODE == UiModeEnum.Edit:
             try:
                 args = self.args
-                args['mainView'].openViewNodeSetting(self.getExData('index'), args)
+                GlobalValue.INIT_WINDOW_GUI.openViewNodeSetting(self.getExData('index'), args)
             except Exception as e:
                 py3_common.Logging.error(e)
 
     def onBtnRightClick(self, event):
-        py3_common.Logging.info('-----BtnNode onBtnRightClick-----')
+        # py3_common.Logging.info('-----BtnNode onBtnRightClick-----')
+        py3_common.Logging.debug(self.getClassName(),'onBtnRightClick')
         if GlobalValue.UI_MODE == UiModeEnum.Normal:
             if GlobalValue.DISABLE_RCLICK_EDIT_NODE:
                 return
             try:
                 args = self.args
-                args['mainView'].openViewNodeSetting(self.getExData('index'), args)
+                GlobalValue.INIT_WINDOW_GUI.openViewNodeSetting(self.getExData('index'), args)
             except Exception as e:
                 py3_common.Logging.error(e)
         elif GlobalValue.UI_MODE == UiModeEnum.Edit:
             args = self.args
-            args['mainView'].selectEditItem(self.getExData('index'))
+            GlobalValue.INIT_WINDOW_GUI.selectEditItem(self.getExData('index'))
+
+    # 响应焦点事件
+    def onFocusIn(self, event):
+        py3_common.Logging.debug(self.getClassName(),'onFocusIn')
+        # dispatchEvent(EventType.Event_ViewFocusIn, self)
+        GlobalValue.INIT_WINDOW.focus_force()
+
+    def onMotion(self, event):
+        py3_common.Logging.debug(self.getClassName(),'onMotion')
+        print(event)

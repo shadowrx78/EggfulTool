@@ -228,17 +228,17 @@ class MainGui(Frame):
         self.mbar.add_cascade(label=' 文件 ',menu=self.menuFile) #添加子菜单
         self.tkThemeHelper.addTkObj(self.menuFile)
         # FileOption.add_command(label="Open Folder", command=None, accelerator="Ctrl+Shift+O")  
-        self.menuFile.add_command(label="从文件导入节点配置",command=self.menuImportNodesConfig)
-        self.menuFile.add_command(label="从文件导入设置",command=self.menuImportSetting)
-        self.menuFile.add_command(label="导出当前节点配置",command=self.menuExportNodesConfig)
-        self.menuFile.add_command(label="导出当前设置",command=self.menuExportSetting)
+        self.menuFile.add_command(label="从文件导入节点配置",command=self.menuImportNodesConfig,accelerator='Ctrl+O')
+        self.menuFile.add_command(label="从文件导入设置",command=self.menuImportSetting,accelerator='Ctrl+Alt+Shift+O')
+        self.menuFile.add_command(label="导出当前节点配置",command=self.menuExportNodesConfig,accelerator='Ctrl+S')
+        self.menuFile.add_command(label="导出当前设置",command=self.menuExportSetting,accelerator='Ctrl+Alt+Shif+S')
         self.menuFile.add_separator()                        #添加分割线
         self.menuFile.add_command(label="定位到节点配置文件",command=lambda path=GlobalValue.NODES_CONFIG_JSON_PATH:self.openPathOnExplorer(path))
         self.menuFile.add_command(label="定位到设置配置文件",command=lambda path=GlobalValue.SETTING_CONFIG_JSON_PATH:self.openPathOnExplorer(path))
         self.menuFile.add_command(label="定位到已删除节点备份文件",command=lambda path=GlobalValue.DELETED_NODES_BACKUP_JSON_PATH:self.openPathOnExplorer(path))
         self.menuFile.add_command(label="定位到配置备份路径",command=lambda path=GlobalValue.JSON_BACKUP_DIR:self.openPathOnExplorer(path))
         self.menuFile.add_separator()                        #添加分割线
-        self.menuFile.add_command(label="刷新",command=self.menuRefresh)
+        self.menuFile.add_command(label="刷新",command=self.menuRefresh,accelerator='F5')
         self.menuFile.add_command(label="格式化节点配置路径",command=self.menuFormatNodesConfigPaths)
         self.menuFile.add_separator()                        #添加分割线
         self.menuFile.add_command(label="退出",command=self.closeRootWindow)
@@ -305,6 +305,12 @@ class MainGui(Frame):
         self.initWindow.bind('<Escape>', self.onKeyBoardEscapeClick)
         # self.initWindow.bind('<Enter>', lambda e:self.initWindow.focus_force())
         self.initWindow.bind_all('<F1>', lambda e:self.menuSetting())
+
+        self.initWindow.bind('<Control-o>', lambda e:self.menuImportNodesConfig())
+        self.initWindow.bind('<Control-Alt-Shift-O>', lambda e:self.menuImportSetting())
+        self.initWindow.bind('<Control-s>', lambda e:self.menuExportNodesConfig())
+        self.initWindow.bind('<Control-Alt-Shift-S>', lambda e:self.menuExportSetting())
+        self.initWindow.bind('<F5>', lambda e:self.menuRefresh())
 
         self.isHideTitleBar = False
         self.initWindow.bind('<F11>', lambda e:self.switchHideTitleBar())
@@ -718,9 +724,9 @@ ctrl+tab：切换模式
     def getNowMouseNearNodeIndex(self):
         nodeIndex = None
         if self.inVirtualListMousePos:
-            nodeIndex = self.virtualListFrame.virtualListCanvas.getNearIndexWithPos(self.inVirtualListMousePos)
+            nodeIndex = self.virtualListFrame.virtualListCanvas.getNearIndexWithPos(self.inVirtualListMousePos, filters=self._tkVirtualListLineTlNodeDataFilters)
         else:
-            nodeIndex = self.virtualListFrame.virtualListCanvas.getNearIndexWithPos({'x':0, 'y':0})
+            nodeIndex = self.virtualListFrame.virtualListCanvas.getNearIndexWithPos({'x':0, 'y':0}, filters=self._tkVirtualListLineTlNodeDataFilters)
         if GlobalValue.UI_MODE == UiModeEnum.Normal:
             return nodeIndex, nodeIndex
         else:
@@ -744,15 +750,15 @@ ctrl+tab：切换模式
             #     return nodeIndex, nodeIndex_
 
             tlNowIndex = self.tlNowIndex
-            # 位置在create节点上时需要改回普通节点index
-            if nodeIndex != None:
-                if nodeIndex >= 0 and nodeIndex > len(tlNowIndex) and tlNowIndex[nodeIndex] == -1:
-                    nodeIndex_ = nodeIndex
-                    nodeIndex = None
-                    if nodeIndex_ < len(tlNowIndex) - 1: #不在末尾
-                        nodeIndex = nodeIndex_ + 1
-                    elif nodeIndex_ > 0: #在末尾但不在开头
-                        nodeIndex = nodeIndex - 1
+            # # 位置在create节点上时需要改回普通节点index
+            # if nodeIndex != None:
+            #     if nodeIndex >= 0 and nodeIndex < len(tlNowIndex) and tlNowIndex[nodeIndex] == -1:
+            #         nodeIndex_ = nodeIndex
+            #         nodeIndex = None
+            #         if nodeIndex_ < len(tlNowIndex) - 1: #不在末尾
+            #             nodeIndex = nodeIndex_ + 1
+            #         elif nodeIndex_ > 0: #在末尾但不在开头
+            #             nodeIndex = nodeIndex_ - 1
             if nodeIndex != None:
                 tlIndex = self.tmNowData['tlIndex']
                 nowIndexKey = tlNowIndex[nodeIndex]
@@ -799,8 +805,8 @@ ctrl+tab：切换模式
         if not 'dnd' in args:
             args['dnd'] = self.dnd
 
-        if not 'mainView' in args:
-            args['mainView'] = self
+        # if not 'mainView' in args:
+        #     args['mainView'] = self
 
         return args
 
@@ -1026,53 +1032,111 @@ ctrl+tab：切换模式
 
 
     def moveItem(self, index, shift):
-        # global TEMP_NODE_LIST
+        # # global TEMP_NODE_LIST
 
-        # # 转换真实index
-        # index_ = self.convertIndex(None, index)
-        # if index_ == None:
-        #     return
-        # # 还原真实表
-        # self.removeCreateNodeToTlNode()
+        # # # 转换真实index
+        # # index_ = self.convertIndex(None, index)
+        # # if index_ == None:
+        # #     return
+        # # # 还原真实表
+        # # self.removeCreateNodeToTlNode()
 
-        # toIndex = min(max(index_ + shift, 0), len(GlobalValue.TEMP_NODE_LIST))
-        # # py3_common.Logging.debug(index, index_, shift, toIndex)
-        # nodeData = GlobalValue.TEMP_NODE_LIST.pop(index_)
-        # GlobalValue.TEMP_NODE_LIST.insert(toIndex, nodeData)
+        # # toIndex = min(max(index_ + shift, 0), len(GlobalValue.TEMP_NODE_LIST))
+        # # # py3_common.Logging.debug(index, index_, shift, toIndex)
+        # # nodeData = GlobalValue.TEMP_NODE_LIST.pop(index_)
+        # # GlobalValue.TEMP_NODE_LIST.insert(toIndex, nodeData)
 
-        # if GlobalValue.UI_MODE == UiModeEnum.Edit:
-        #     self.addCreateNodeToTlNode()
+        # # if GlobalValue.UI_MODE == UiModeEnum.Edit:
+        # #     self.addCreateNodeToTlNode()
+
+        # tlIndex = py3_common.deep_copy_dict(self.tmNowData['tlIndex'])
+        # realIndex = self.convertIndex(None, index)
+        # if shift == 0 or (shift > 0 and realIndex == len(tlIndex)-1) or (shift < 0 and realIndex == 0):
+        #     return index
+        # toIndex = min(max(realIndex + shift, 0), len(tlIndex))
+        # indexKey = tlIndex.pop(realIndex)
+        # tlIndex.insert(toIndex, indexKey)
+        # self._setData(['tlIndex'], tlIndex, noUpdateView=True)
+
+        # # 转换当前index
+        # self.refreshTlNowIndex()
+        # toIndex_ = self.convertIndex(toIndex)
+        # if toIndex_ == None:
+        #     toIndex_ = index
+        # if GlobalValue.NOW_SELECT_INDEX == index:
+        #     self.selectEditItem(toIndex_, False)
+
+        # self.updateTlNode()
+        # # # self.saveTlNodeData()
+        # # if not self.virtualListFrame.virtualListCanvas.isIndexInVisualRange(toIndex_, allInRange=True, isNow=True):
+        # #     visualRange = self.virtualListFrame.virtualListCanvas.getScrollFrameVisualRange()
+        # #     nodeData_ = self.virtualListFrame.virtualListCanvas.getNodeDataByIndex(toIndex_)
+        # #     value = 0
+        # #     if nodeData_ and visualRange:
+        # #         if nodeData_['y'] + nodeData_['height'] > visualRange['y'] + visualRange['height']:
+        # #             value = 1
+        # #     self.jumpToIndex(toIndex_, value=value)
+        # #     # self.jumpToIndex(toIndex_)
+        # self.seeIndex(toIndex_)
+        # return toIndex_
+        return self.moveItemToIndex(index, index+shift)
+
+    def moveItemToIndex(self, index, toIndex, isLineNodeSpecial=True):
+        toIndex = min(max(toIndex, 0), len(self.tlNowIndex)-1)
+        if index == toIndex:
+            return index
 
         tlIndex = py3_common.deep_copy_dict(self.tmNowData['tlIndex'])
         realIndex = self.convertIndex(None, index)
-        if shift == 0 or (shift > 0 and realIndex == len(tlIndex)-1) or (shift < 0 and realIndex == 0):
-            return index
-        toIndex = min(max(realIndex + shift, 0), len(tlIndex))
-        indexKey = tlIndex.pop(realIndex)
-        tlIndex.insert(toIndex, indexKey)
-        self._setData(['tlIndex'], tlIndex, noUpdateView=True)
 
-        # 转换当前index
-        self.refreshTlNowIndex()
-        toIndex_ = self.convertIndex(toIndex)
-        if toIndex_ == None:
-            toIndex_ = index
-        if GlobalValue.NOW_SELECT_INDEX == index:
-            self.selectEditItem(toIndex_, False)
+        realToIndex = None
+        if self.tlNowIndex[toIndex] == -1:  #原位置是createNode
+            if toIndex < len(self.tlNowIndex) - 1:
+                realToIndex = self.convertIndex(None, toIndex+1)
 
-        self.updateTlNode()
-        # # self.saveTlNodeData()
-        # if not self.virtualListFrame.virtualListCanvas.isIndexInVisualRange(toIndex_, allInRange=True, isNow=True):
-        #     visualRange = self.virtualListFrame.virtualListCanvas.getScrollFrameVisualRange()
-        #     nodeData_ = self.virtualListFrame.virtualListCanvas.getNodeDataByIndex(toIndex_)
-        #     value = 0
-        #     if nodeData_ and visualRange:
-        #         if nodeData_['y'] + nodeData_['height'] > visualRange['y'] + visualRange['height']:
-        #             value = 1
-        #     self.jumpToIndex(toIndex_, value=value)
-        #     # self.jumpToIndex(toIndex_)
-        self.seeIndex(toIndex_)
-        return toIndex_
+                # 分割线节点特殊处理
+                if realToIndex == realIndex and toIndex < index and toIndex > 0 and isLineNodeSpecial:
+                    nodeData = self.getNodeDataByVirtualIndex(index)
+                    if nodeData and 'nodeType' in nodeData and nodeData['nodeType'] == 'Line':
+                        realToIndex = self.convertIndex(None, toIndex-1)
+            else:
+                realToIndex = len(tlIndex) - 1
+        else:
+            realToIndex = self.convertIndex(None, toIndex)
+
+        if realToIndex != None:
+            if realIndex == realToIndex:
+                return index
+            indexKey = tlIndex.pop(realIndex)
+            tlIndex.insert(realToIndex, indexKey)
+            self._setData(['tlIndex'], tlIndex, noUpdateView=True)
+
+            # 转换当前index
+            self.refreshTlNowIndex()
+            toIndex_ = self.convertIndex(realToIndex)
+            if toIndex_ == None:
+                toIndex_ = index
+            if GlobalValue.NOW_SELECT_INDEX == index:
+                self.selectEditItem(toIndex_, False)
+
+            self.updateTlNode()
+            self.seeIndex(toIndex_)
+            return toIndex_
+        return toIndex
+
+    def _tkVirtualListLineTlNodeDataFilters(self, tlNodeData):
+        tlNodeData_ = list()
+        for i in range(0,len(tlNodeData)):
+            nodeData = tlNodeData[i]
+            isAdd = True
+            try:
+                if nodeData['data']['nodeType'] == 'Create':
+                    isAdd = False
+            except Exception as e:
+                pass
+            if isAdd:
+                tlNodeData_.append(nodeData)
+        return tlNodeData_
 
     def selectEditItem(self, index=None, update=True):
         # global NOW_SELECT_INDEX
@@ -1094,17 +1158,51 @@ ctrl+tab：切换模式
 
     def onKeyboardArrowClick(self, arrow):
         if arrow == ArrowDirEnum.Up:
-            if GlobalValue.NOW_SELECT_INDEX != None and GlobalValue.UI_MODE == UiModeEnum.Edit:
-                self.moveItem(GlobalValue.NOW_SELECT_INDEX, -1)
+            # if GlobalValue.NOW_SELECT_INDEX != None and GlobalValue.UI_MODE == UiModeEnum.Edit:
+            #     self.moveItem(GlobalValue.NOW_SELECT_INDEX, -1)
+            self._moveItemArrowUpDown(arrow)
         elif arrow == ArrowDirEnum.Down:
-            if GlobalValue.NOW_SELECT_INDEX != None and GlobalValue.UI_MODE == UiModeEnum.Edit:
-                self.moveItem(GlobalValue.NOW_SELECT_INDEX, 1)
+            # if GlobalValue.NOW_SELECT_INDEX != None and GlobalValue.UI_MODE == UiModeEnum.Edit:
+            #     self.moveItem(GlobalValue.NOW_SELECT_INDEX, 1)
+            self._moveItemArrowUpDown(arrow)
         elif arrow == ArrowDirEnum.Left:
             if GlobalValue.NOW_SELECT_INDEX != None and GlobalValue.UI_MODE == UiModeEnum.Edit:
                 self.moveItem(GlobalValue.NOW_SELECT_INDEX, -1)
         elif arrow == ArrowDirEnum.Right:
             if GlobalValue.NOW_SELECT_INDEX != None and GlobalValue.UI_MODE == UiModeEnum.Edit:
                 self.moveItem(GlobalValue.NOW_SELECT_INDEX, 1)
+
+    def _moveItemArrowUpDown(self, arrow):
+        if GlobalValue.NOW_SELECT_INDEX != None and GlobalValue.UI_MODE == UiModeEnum.Edit:
+            virtualListCanvas = self.virtualListFrame.virtualListCanvas
+            nodeData = virtualListCanvas.getNodeDataByIndex(GlobalValue.NOW_SELECT_INDEX)
+            rect = dict()
+            rect['x'] = nodeData['x']
+            rect['y'] = nodeData['y'] + (nodeData['height'] if arrow == ArrowDirEnum.Down else -nodeData['height'])
+            rect['width'] = nodeData['width']
+            rect['height'] = nodeData['height']
+            if 'data' in nodeData and 'nodeType' in nodeData['data'] and nodeData['data']['nodeType'] == 'Line':
+                # 分割线节点特殊处理
+                pos = virtualListCanvas.getRectPosWithAnchor(rect, anchor={'x':0.5, 'y':0.5})
+                visualRange = virtualListCanvas.getScrollFrameVisualRange()
+                tlNodeData = virtualListCanvas.getOneLineTlNodeDataWithPosInCanvas(pos, visualRange=visualRange, filters=self._tkVirtualListLineTlNodeDataFilters)
+                toIndex = None
+                if tlNodeData != None:
+                    if arrow == ArrowDirEnum.Down:
+                        toIndex = tlNodeData[len(tlNodeData)-1]['index']
+                    else:
+                        if len(tlNodeData) > 0:
+                            toIndex = tlNodeData[0]['index']
+                        else:
+                            tlNodeData_ = virtualListCanvas.getOneLineTlNodeDataWithPosInCanvas(pos, visualRange=visualRange, filters=self._tkVirtualListLineTlNodeDataFilters, shiftLine=-1)
+                            if len(tlNodeData_) > 0:
+                                toIndex = tlNodeData_[0]['index']
+                if toIndex != None:
+                    self.moveItemToIndex(GlobalValue.NOW_SELECT_INDEX, toIndex)
+            else:
+                toIndex = virtualListCanvas.getInsertIndexWithRectInCanvas(rect, filters=self._tkVirtualListLineTlNodeDataFilters)
+                if toIndex != None:
+                    self.moveItemToIndex(GlobalValue.NOW_SELECT_INDEX, toIndex)
 
     def onKeyBoardDeleteClick(self, event):
         # global NOW_SELECT_INDEX
