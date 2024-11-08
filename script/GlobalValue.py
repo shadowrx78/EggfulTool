@@ -394,7 +394,7 @@ def fixReInputStr(inputStr):
     return tempStr
 
 
-def tkCenter(win, resetSize=False, anchorPos={'x':0.5, 'y':0.5}):
+def tkCenter(win, resetSize=False, anchorPos={'x':0.5, 'y':0.5}, forceInScreen=True):
     """
     centers a tkinter window
     :param win: the main window or Toplevel window to center
@@ -406,8 +406,12 @@ def tkCenter(win, resetSize=False, anchorPos={'x':0.5, 'y':0.5}):
     height = win.winfo_height()
     titlebar_height = win.winfo_rooty() - win.winfo_y()
     win_height = height + titlebar_height + frm_width
-    x = round(win.winfo_screenwidth() * anchorPos['x']) - win_width // 2
-    y = round(win.winfo_screenheight() * anchorPos['y']) - win_height // 2
+    screen_width, screen_height = win.winfo_screenwidth(), win.winfo_screenheight()
+    x = round(screen_width * anchorPos['x']) - win_width // 2
+    y = round(screen_height * anchorPos['y']) - win_height // 2
+    if forceInScreen:
+        x = min(max(0, x), screen_width-width)
+        y = min(max(0, y), screen_height-height)
     # py3_common.Logging.error(width, height, x, y)
     if resetSize:
         win.geometry('{}x{}+{}+{}'.format(width, height, x, y))
