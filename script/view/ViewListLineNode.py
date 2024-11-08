@@ -269,7 +269,10 @@ class ViewListLineNode(BaseView):
         listbox.selection_clear(0, END)
         index = None
         if len(tlIndex) > 0:
-            index = min(max(tlIndex[0]+shift, 0), len(self.tlConvertScreenNodeData)-1)
+            if isPageChange:
+                index = min(max(tlIndex[0]+shift, 0), len(self.tlConvertScreenNodeData)-1)
+            else:
+                index = (tlIndex[0]+shift) % len(self.tlConvertScreenNodeData)
             # py3_common.Logging.debug('a', index)
             listbox.selection_set(index, index)
         else:
@@ -287,7 +290,7 @@ class ViewListLineNode(BaseView):
 
     def selectListboxTopOrBottom(self, isTop=True):
         totalNum = len(self.tlConvertScreenNodeData)
-        return self.selectListboxWithShift((-totalNum) if isTop else totalNum)
+        return self.selectListboxWithShift((-totalNum) if isTop else totalNum, isPageChange=True)
 
     def onNoIgnorecaseVarChange(self):
         GlobalValue.SEARCH_VIEW_NO_IGNORECASE = self.checkbuttonNoIgnorecaseVar.get() > 0
