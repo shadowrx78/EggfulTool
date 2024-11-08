@@ -25,6 +25,15 @@ from tkinter import font
 import traceback
 
 
+class LoggingLevelEnum:
+    DEBUG = 0
+    INFO = 1
+    WARN = 2
+    ERROR = 3
+
+# 日志级别
+LOGGING_LEVEL = LoggingLevelEnum.DEBUG
+
 IS_ERROR_SHOW_MESSAGEBOX = True
 # 彩色输出
 STD_OUTPUT_HANDLE = -11
@@ -75,19 +84,23 @@ class Logging:
 
     @staticmethod
     def debug(*s, end='\n'):
-        Logging.log(*s, color=Logging.FOREGROUND_MAGENTA, end=end)
+        if LOGGING_LEVEL <= LoggingLevelEnum.DEBUG:
+            Logging.log(*s, color=Logging.FOREGROUND_MAGENTA, end=end)
 
     @staticmethod
     def info(*s, end='\n'):
-        Logging.log(*s, color=Logging.FOREGROUND_GREEN, end=end)
+        if LOGGING_LEVEL <= LoggingLevelEnum.INFO:
+            Logging.log(*s, color=Logging.FOREGROUND_GREEN, end=end)
 
     @staticmethod
     def info2(*s, end='\n'):
-        Logging.log(*s, color=Logging.FOREGROUND_BLUE, end=end)
+        if LOGGING_LEVEL <= LoggingLevelEnum.INFO:
+            Logging.log(*s, color=Logging.FOREGROUND_BLUE, end=end)
 
     @staticmethod
     def warning(*s, end='\n'):
-        Logging.log(*s, color=Logging.FOREGROUND_YELLOW, end=end)
+        if LOGGING_LEVEL <= LoggingLevelEnum.WARN:
+            Logging.log(*s, color=Logging.FOREGROUND_YELLOW, end=end)
 
     @staticmethod
     def error(*s, end='\n', isShowMessageBox=IS_ERROR_SHOW_MESSAGEBOX, messageboxParent=None):
@@ -115,12 +128,14 @@ class Logging:
     # 测试用
     @staticmethod
     def debug2(*s, end='\n'):
-        Logging.log(*s, color=Logging.FOREGROUND_SKYBLUE, end=end)
+        if LOGGING_LEVEL <= LoggingLevelEnum.DEBUG:
+            Logging.log(*s, color=Logging.FOREGROUND_SKYBLUE, end=end)
 
     @staticmethod
     def debug3(*s, end='\n'):
-        # Logging.log(*s, color=Logging.FOREGROUND_BLUE|Logging.BACKGROUND_YELLOW, end=end)
-        Logging.log(*s, color=Logging.FOREGROUND_DARKSKYBLUE, end=end)
+        if LOGGING_LEVEL <= LoggingLevelEnum.DEBUG:
+            # Logging.log(*s, color=Logging.FOREGROUND_BLUE|Logging.BACKGROUND_YELLOW, end=end)
+            Logging.log(*s, color=Logging.FOREGROUND_DARKSKYBLUE, end=end)
 
 
 # run cmd 
@@ -1400,6 +1415,14 @@ def setDataToTkSheet(sheet, tlTitle=list(), tlRowIndex=list(), tlTlData=list()):
     except Exception as e:
         # raise e
         pass
+
+def tkSheetGetSelectedRCHelper(sheet, isShowMessageBox=True, messageboxParent=None):
+    r,c = sheet.get_currently_selected_rc()
+    if r == None or c == None or sheet.is_selected_out_of_range():
+        if isShowMessageBox:
+            messageboxShowerror2('错误','未选中数据',parent=messageboxParent)
+        return r, c, False
+    return r, c, True
 
 
 # 解析tkdnd拖入事件数据，只接受('%D',)

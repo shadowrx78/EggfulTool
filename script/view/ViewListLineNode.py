@@ -67,7 +67,8 @@ class ViewListLineNode(BaseView):
 
     # 弹窗位置，返回None时不设置，子类重载
     def getAnchorPos(self):
-        return {'x':0.8, 'y':0.5}
+        # return {'x':0.8, 'y':0.5}
+        return getViewPosAnchor(self.getClassName())
         
     def initUi(self):
         # self.resizable(width=False, height=False)

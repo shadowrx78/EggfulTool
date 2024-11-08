@@ -31,6 +31,7 @@ from .. import py3_common, GlobalValue
 from ..GlobalValue import *
 from ..EventProxy import *
 from .BaseView import *
+from .ViewShowPosSetting import ViewShowPosSetting
 
 
 
@@ -50,6 +51,7 @@ class ViewRootSetting(BaseView):
         self.tlColorBtn = list()
         self.showColor = False
         self.isColorChange = False
+        self.tmViewPos = py3_common.deep_copy_dict(GlobalValue.TM_VIEW_POS) if GlobalValue.TM_VIEW_POS != None else None
 
         self.initUi()
 
@@ -279,7 +281,7 @@ class ViewRootSetting(BaseView):
             frameOptions.columnconfigure(0,weight=1)
             frameOptions.grid(row=2, column=0, sticky='nsew', columnspan=1, rowspan=1)
             self.tkThemeHelper.addTkObj(frameOptions)
-            labelOptionsTitle = Label(frameOptions, text='选项', font=titleFont, anchor='w')
+            labelOptionsTitle = Label(frameOptions, text='选项：', font=titleFont, anchor='w')
             labelOptionsTitle.grid(row=0, column=0, sticky='w')
             self.tkThemeHelper.addTkObj(labelOptionsTitle)
             # 执行前询问选择框
@@ -318,6 +320,33 @@ class ViewRootSetting(BaseView):
             separatorTemp = ttk.Separator(frameOptions)
             separatorTemp.grid(row=3,column=0,sticky='nsew',columnspan=1,rowspan=1)
 
+        # 界面弹出位置
+        if True:
+            frameViewPos = Frame(frameTop)
+            frameViewPos.columnconfigure(0,weight=1)
+            frameViewPos.grid(row=3, column=0, sticky='nsew', columnspan=1, rowspan=1)
+            self.tkThemeHelper.addTkObj(frameViewPos)
+            labelViewPosTitle = Label(frameViewPos, text='界面弹出位置：', font=titleFont, anchor='w')
+            labelViewPosTitle.grid(row=0, column=0, sticky='w')
+            self.tkThemeHelper.addTkObj(labelViewPosTitle)
+
+            frameBtn = Frame(frameViewPos)
+            frameBtn.grid(row=1, column=0, sticky='w')
+            # frameBtn.columnconfigure(0,weight=1)
+            self.tkThemeHelper.addTkObj(frameBtn)
+            buttonPosMainGui = Button(frameBtn, text='主界面', command=lambda k='MainGui', tStr='设置主界面弹出位置' :self.onBtnViewPosClick(k, titleStr=tStr), takefocus=0)
+            buttonPosMainGui.grid(row=0, column=0, sticky='w', padx=padding[0], pady=padding[1])
+            self.tkThemeHelper.addTkObj(buttonPosMainGui)
+            buttonPosMainGui = Button(frameBtn, text='节点设置界面', command=lambda k='ViewNodeSetting', tStr='设置节点设置界面弹出位置' :self.onBtnViewPosClick(k, titleStr=tStr), takefocus=0)
+            buttonPosMainGui.grid(row=0, column=1, sticky='w', padx=padding[0], pady=padding[1])
+            self.tkThemeHelper.addTkObj(buttonPosMainGui)
+            buttonPosMainGui = Button(frameBtn, text='搜索界面', command=lambda k='ViewListLineNode', tStr='设置搜索界面弹出位置' :self.onBtnViewPosClick(k, titleStr=tStr), takefocus=0)
+            buttonPosMainGui.grid(row=0, column=2, sticky='w', padx=padding[0], pady=padding[1])
+            self.tkThemeHelper.addTkObj(buttonPosMainGui)
+
+            separatorTemp = ttk.Separator(frameViewPos)
+            separatorTemp.grid(row=2,column=0,sticky='nsew',columnspan=1,rowspan=1)
+
 
 
         frameBottom = Frame(self)
@@ -350,6 +379,7 @@ class ViewRootSetting(BaseView):
     def initEventListen(self):
         self.removeAllEventListen()
         self.addEventListener(EventType.Event_SettingColorChange, self.onEvent_SettingColorChange)
+        self.addEventListener(EventType.Event_SettingViewShowPosSettingConfirm, self.onEvent_SettingViewShowPosSettingConfirm)
 
 
 
@@ -378,6 +408,9 @@ class ViewRootSetting(BaseView):
                 setOptionAskBeforeExecuting(typeStr, self.tmCheckbuttonAskExeVar[typeStr].get() > 0)
         # 禁用右键编辑节点开关
         GlobalValue.DISABLE_RCLICK_EDIT_NODE = self.checkbuttonDisableRCEditVar.get() > 0
+
+        # 界面弹出位置
+        GlobalValue.TM_VIEW_POS = self.tmViewPos
 
         # 保存
         saveProjectSetting()
@@ -409,6 +442,10 @@ class ViewRootSetting(BaseView):
         GlobalValue.TM_BTN_TYPE_COLOR = py3_common.deep_copy_dict(GlobalValue.TM_BTN_TYPE_COLOR_STYLE_DEFAULT[styleType])
         # saveProjectSetting()
         dispatchEvent(EventType.Event_SettingColorChange)
+
+    def onBtnViewPosClick(self, key, titleStr=None):
+        oldValue = getViewPosEnum(key, exTmViewPos=self.tmViewPos)
+        view = ViewShowPosSetting(self, key, oldValue=oldValue, titleStr=titleStr)
 
 
 
@@ -484,3 +521,8 @@ class ViewRootSetting(BaseView):
         self.isColorChange = True
         for i in range(0,len(self.tlColorBtn)):
             self.updateLabelBtnColor(self.tlColorBtn[i][0], self.tlColorBtn[i][1])
+
+    def onEvent_SettingViewShowPosSettingConfirm(self, key, value):
+        if self.tmViewPos == None:
+            self.tmViewPos = {}
+        self.tmViewPos[key] = value

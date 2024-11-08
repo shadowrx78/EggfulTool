@@ -183,6 +183,12 @@ class MainGui(Frame):
             self.oldFocusWidget.focus_set()
             self.oldFocusWidget = None
 
+    def getAnchorPos(self):
+        anchorPos = getViewPosAnchor(self.getClassName())
+        if anchorPos == None:
+            anchorPos = getViewPosAnchorWithViewPosEnum(GlobalValue.ViewPosEnum.Center)
+        return anchorPos
+
 
     #设置窗口
     def setInitWindow(self):
@@ -593,8 +599,9 @@ ctrl+tab：切换模式
     # 复制环境变量到剪贴板
     def menuCopyEnvironToClipboard(self):
         envContent = self.getEnvironJsonContent()
-        self.clipboard_clear()
-        self.clipboard_append(envContent)
+        # self.clipboard_clear()
+        # self.clipboard_append(envContent)
+        GlobalValue.copyStr2Clipboard(envContent)
 
     def getEnvironJsonContent(self):
         env = os.environ
@@ -929,8 +936,9 @@ ctrl+tab：切换模式
             copyStr = json.dumps(nodeData, ensure_ascii=False, indent=None, sort_keys=False)
             py3_common.Logging.debug('-----copy nodeData-----')
             py3_common.Logging.debug(copyStr)
-            self.clipboard_clear()
-            self.clipboard_append(copyStr)
+            # self.clipboard_clear()
+            # self.clipboard_append(copyStr)
+            GlobalValue.copyStr2Clipboard(copyStr)
             return True
         return False
 
@@ -1958,7 +1966,7 @@ def gui_start():
     myGuiProgram = MainGui(initWindow)
     GlobalValue.INIT_WINDOW_GUI = myGuiProgram
 
-    tkCenter(initWindow)
+    tkCenter(initWindow, anchorPos=myGuiProgram.getAnchorPos())
     # 弹出初始化错误提示
     showTlInitErrorMsg()
 

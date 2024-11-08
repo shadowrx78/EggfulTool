@@ -60,6 +60,10 @@ class ViewNodeSetting(BaseView):
     def isUnique(self):
         return True
 
+    # 弹窗位置，返回None时不设置，子类重载
+    def getAnchorPos(self):
+        return getViewPosAnchor(self.getClassName())
+
     def initUi(self):
         self.resizable(width=False, height=False)
         self.title("修改" if self.data else "新建")
@@ -509,6 +513,15 @@ class ViewNodeSetting(BaseView):
         if not tempData:
             return False
 
+        # 保存
+        try:
+            key = getSettingKey(tempData)
+            script = getImportModule(getModuleNameWithTypeStr(key))
+            if not script.saveData(self.tmExUi, tempData):
+                return False
+        except Exception as e:
+            py3_common.Logging.error(e)
+
         dispatchEvent(EventType.Event_MainGuiTmNowDataBackupMark)
         if self.data == None or self.indexKey == None:
             # 插入
@@ -567,12 +580,12 @@ class ViewNodeSetting(BaseView):
         else:
             tempData['btnText'] = title
 
-        try:
-            script = getImportModule(getModuleNameWithTypeStr(key))
-            if not script.saveData(self.tmExUi, tempData):
-                return False
-        except Exception as e:
-            py3_common.Logging.error(e)
+        # try:
+        #     script = getImportModule(getModuleNameWithTypeStr(key))
+        #     if not script.saveData(self.tmExUi, tempData):
+        #         return False
+        # except Exception as e:
+        #     py3_common.Logging.error(e)
 
         self.screenKey(tempData)
         # print(tempData)
@@ -591,17 +604,25 @@ class ViewNodeSetting(BaseView):
         copyStr = json.dumps(tempData, ensure_ascii=False, indent=None, sort_keys=False)
         py3_common.Logging.debug('-----copy nodeData-----')
         py3_common.Logging.debug(copyStr)
-        self.clipboard_clear()
-        self.clipboard_append(copyStr)
+        # self.clipboard_clear()
+        # self.clipboard_append(copyStr)
+        GlobalValue.copyStr2Clipboard(copyStr)
+        messagebox.showinfo('提示', '复制json成功', parent=self)
         return True
 
     def pasteNodeConfig(self):
         try:
-            self.tempData = json.loads(self.clipboard_get(), object_pairs_hook=OrderedDict)
-        except json.JSONDecodeError as e:
+            self.tempData = json.loads(GlobalValue.getStrFromClipboard(), object_pairs_hook=OrderedDict)
+        except Exception as e:
             # raise e
             py3_common.Logging.error(e)
             return False
+
+        if not isinstance(tempData, dict):
+            py3_common.messageboxShowerror2('错误','格式错误',parent=self)
+            return False
+
+        py3_common.Logging.debug(self.tempData)
         # 刷新
         self.updateFrameTop(refreshType=True, refreshTitle=True)
         self.updateFrameMiddle()

@@ -150,6 +150,14 @@ class UndoRedoHelper(object):
             else:
                 self.recordOper(UndoRedoHelper.OperAdd, tlKey, newValue=value)
 
+    # 测试设置数据
+    def testSetValueWithTlKey(self, nowData, tlKey, value, isDel=False, isInsert=False):
+        nowData_ = py3_common.deep_copy_dict(nowData, isOrdered=False)
+        oldValue, suc = py3_common.getValueWithTlKey(nowData_, tlKey)
+        if len(tlKey) == 0 and suc:
+            oldValue = py3_common.deep_copy_dict(oldValue, isOrdered=False)
+        py3_common.setValueWithTlKey(nowData_, tlKey, value, isDel=isDel, isInsert=isInsert)
+
     # 是否有改动
     def hasModify(self):
         if self.savePointer < 0:

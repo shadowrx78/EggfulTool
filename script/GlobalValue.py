@@ -46,6 +46,13 @@ IS_DEBUG = True
 # eventProxy派发事件是否显示参数
 IS_EVENTPROXY_SHOW_ARGS = False
 
+if IS_DEBUG:
+    py3_common.LOGGING_LEVEL = py3_common.LoggingLevelEnum.DEBUG
+    tkVirtualListHelper.LOGGING_LEVEL = tkVirtualListHelper.LoggingLevelEnum.DEBUG
+else:
+    py3_common.LOGGING_LEVEL = py3_common.LoggingLevelEnum.INFO
+    tkVirtualListHelper.LOGGING_LEVEL = tkVirtualListHelper.LoggingLevelEnum.INFO
+
 # 模式
 class UiModeEnum:
     Normal = 0
@@ -166,6 +173,18 @@ class ArrowDirEnum:
     Left = 2
     Right = 3
 
+# 界面位置类型
+class ViewPosEnum:
+    LeftDown = 1
+    Down = 2
+    RightDown = 3
+    Left = 4
+    Center = 5
+    Right = 6
+    LeftUp = 7
+    Up = 8
+    RightUp = 9
+
 
 
 #####节点相关
@@ -208,6 +227,26 @@ TL_INIT_ERROR_MSG = list()
 ASK_BEFORE_EXECUTING = None
 # 禁用右键编辑节点
 DISABLE_RCLICK_EDIT_NODE = False
+# 界面位置锚点字典
+TM_DEFAULT_VIEW_POS_ANCHOR = {}
+if True:
+    TM_DEFAULT_VIEW_POS_ANCHOR[ViewPosEnum.LeftDown] = {'x':0.2, 'y':0.8}
+    TM_DEFAULT_VIEW_POS_ANCHOR[ViewPosEnum.Down] = {'x':0.5, 'y':0.8}
+    TM_DEFAULT_VIEW_POS_ANCHOR[ViewPosEnum.RightDown] = {'x':0.8, 'y':0.8}
+    TM_DEFAULT_VIEW_POS_ANCHOR[ViewPosEnum.Left] = {'x':0.2, 'y':0.5}
+    TM_DEFAULT_VIEW_POS_ANCHOR[ViewPosEnum.Center] = {'x':0.5, 'y':0.5}
+    TM_DEFAULT_VIEW_POS_ANCHOR[ViewPosEnum.Right] = {'x':0.8, 'y':0.5}
+    TM_DEFAULT_VIEW_POS_ANCHOR[ViewPosEnum.LeftUp] = {'x':0.2, 'y':0.2}
+    TM_DEFAULT_VIEW_POS_ANCHOR[ViewPosEnum.Up] = {'x':0.5, 'y':0.2}
+    TM_DEFAULT_VIEW_POS_ANCHOR[ViewPosEnum.RightUp] = {'x':0.8, 'y':0.2}
+# 各界面位置默认值
+TM_DEFAULT_VIEW_POS = {
+    'MainGui': ViewPosEnum.Center,
+    'ViewListLineNode': ViewPosEnum.Right,
+    'ViewNodeSetting': ViewPosEnum.Center
+}
+# 各界面位置
+TM_VIEW_POS = None
 
 
 
@@ -393,6 +432,10 @@ def copyStr2Clipboard(str_):
     if str_ != None and isinstance(str_, str):
         pyperclip.copy(str_)
 
+# 从剪贴板获取文本
+def getStrFromClipboard():
+    return pyperclip.paste()
+
 
 # 文件修改时间转日期字符串
 def fileStMTimeToDataStr(filePath):
@@ -517,6 +560,10 @@ def refreshProjectSetting():
             if 'disableRightClickEditNode' in jList:
                 global DISABLE_RCLICK_EDIT_NODE
                 DISABLE_RCLICK_EDIT_NODE = jList['disableRightClickEditNode']
+            # 刷新各界面位置
+            if 'tmViewPos' in jList:
+                global TM_VIEW_POS
+                TM_VIEW_POS = jList['tmViewPos']
     else:
         saveProjectSetting()
 
@@ -535,6 +582,8 @@ def getTmSettingData():
     jList['styleType'] = STYLE_TYPE
     jList['askBeforeExecuting'] = ASK_BEFORE_EXECUTING
     jList['disableRightClickEditNode'] = DISABLE_RCLICK_EDIT_NODE
+    if bool(TM_VIEW_POS):
+        jList['tmViewPos'] = TM_VIEW_POS
     return jList
 
 
@@ -551,6 +600,28 @@ def getTmBtnTypeColorAddDefault(tmColor, styleType=None):
     if styleType == None:
         styleType = STYLE_TYPE
     return py3_common.sync_json_field2(TM_BTN_TYPE_COLOR_STYLE_DEFAULT[styleType], tmColor)
+
+# 获取界面位置枚举
+def getViewPosEnum(className, exTmViewPos=None):
+    if not className:
+        return None
+    tmViewPos = exTmViewPos or TM_VIEW_POS or {}
+    if className in tmViewPos:
+        return tmViewPos[className]
+    if className in TM_DEFAULT_VIEW_POS:
+        return TM_DEFAULT_VIEW_POS[className]
+    return None
+
+# 根据界面位置枚举获取界面位置锚点
+def getViewPosAnchorWithViewPosEnum(viewPosEnum):
+    if viewPosEnum == None or not viewPosEnum in TM_DEFAULT_VIEW_POS_ANCHOR:
+        return None
+    return py3_common.deep_copy_dict(TM_DEFAULT_VIEW_POS_ANCHOR[viewPosEnum])
+
+# 获取界面位置锚点
+def getViewPosAnchor(className, exTmViewPos=None):
+    viewPosEnum = getViewPosEnum(className, exTmViewPos=exTmViewPos)
+    return getViewPosAnchorWithViewPosEnum(viewPosEnum)
 
 
 # 刷新节点列表

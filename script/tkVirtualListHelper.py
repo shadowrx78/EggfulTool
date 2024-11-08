@@ -18,8 +18,6 @@ from collections import OrderedDict
 
 from sys import platform
 
-from . import py3_common
-
 # import ccbparser
 # import plistlib
 
@@ -29,6 +27,15 @@ from . import py3_common
 ###########################
 
 
+
+class LoggingLevelEnum:
+    DEBUG = 0
+    INFO = 1
+    WARN = 2
+    ERROR = 3
+
+# 日志级别
+LOGGING_LEVEL = LoggingLevelEnum.DEBUG
 
 # 彩色输出
 STD_OUTPUT_HANDLE = -11
@@ -80,15 +87,23 @@ class Logging:
 
     @staticmethod
     def debug(*s):
-        Logging.log(*s, color=Logging.FOREGROUND_MAGENTA)
+        if LOGGING_LEVEL <= LoggingLevelEnum.DEBUG:
+            Logging.log(*s, color=Logging.FOREGROUND_MAGENTA)
 
     @staticmethod
     def info(*s):
-        Logging.log(*s, color=Logging.FOREGROUND_GREEN)
+        if LOGGING_LEVEL <= LoggingLevelEnum.INFO:
+            Logging.log(*s, color=Logging.FOREGROUND_GREEN)
+
+    @staticmethod
+    def info2(*s, end='\n'):
+        if LOGGING_LEVEL <= LoggingLevelEnum.INFO:
+            Logging.log(*s, color=Logging.FOREGROUND_BLUE, end=end)
 
     @staticmethod
     def warning(*s):
-        Logging.log(*s, color=Logging.FOREGROUND_YELLOW)
+        if LOGGING_LEVEL <= LoggingLevelEnum.WARN:
+            Logging.log(*s, color=Logging.FOREGROUND_YELLOW)
 
     @staticmethod
     def error(*s):
@@ -108,11 +123,13 @@ class Logging:
     # 测试用
     @staticmethod
     def debug2(*s):
-        Logging.log(*s, color=Logging.FOREGROUND_SKYBLUE)
+        if LOGGING_LEVEL <= LoggingLevelEnum.DEBUG:
+            Logging.log(*s, color=Logging.FOREGROUND_SKYBLUE)
 
     @staticmethod
     def debug3(*s):
-        Logging.log(*s, color=Logging.FOREGROUND_BLUE|Logging.BACKGROUND_YELLOW)
+        if LOGGING_LEVEL <= LoggingLevelEnum.DEBUG:
+            Logging.log(*s, color=Logging.FOREGROUND_BLUE|Logging.BACKGROUND_YELLOW)
 
 
 
@@ -231,7 +248,7 @@ class BaseNode(Frame):
             self.initUi()
 
     def __del__(self):
-        py3_common.Logging.info2(self.getClassName(),'__del__')
+        Logging.info2(self.getClassName(),'__del__')
 
     def getClassName(self):
         return self.__class__.__name__
@@ -375,7 +392,7 @@ class VirtualListCanvas(Canvas):
         self.initUi()
 
     def __del__(self):
-        py3_common.Logging.info2(self.getClassName(),'__del__')
+        Logging.info2(self.getClassName(),'__del__')
 
     def getClassName(self):
         return self.__class__.__name__
@@ -1044,7 +1061,7 @@ class VirtualListCanvas(Canvas):
             self.unbindCanvasMousewheel(None)
         except Exception as e:
             # raise e
-            py3_common.Logging.error(e)
+            Logging.error(e)
 
     # 响应滚动(滚轮)
     def onCanvasMousewheel(self, event):
@@ -1104,7 +1121,7 @@ class VirtualListFrame(Frame):
         self.initUi()
 
     def __del__(self):
-        py3_common.Logging.info2(self.getClassName(),'__del__')
+        Logging.info2(self.getClassName(),'__del__')
 
     def getClassName(self):
         return self.__class__.__name__
@@ -1169,7 +1186,7 @@ class VirtualListFrame(Frame):
             self.onLeave(None)
         except Exception as e:
             # raise e
-            py3_common.Logging.error(e)
+            Logging.error(e)
 
 
     # 画布鼠标滚轮监听
