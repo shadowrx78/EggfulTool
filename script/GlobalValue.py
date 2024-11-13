@@ -683,8 +683,8 @@ def initNodesConfig():
 def createNodesConfigJson():
     # jList = TEMP_NODE_LIST
     jList = TEMP_TM_NODE_DATA
-    if jList == None or not isinstance(jList, list):
-        jList = list()
+    if jList == None or not isinstance(jList, dict):
+        jList = py3_common.deep_copy_dict(TEMP_TM_NODE_DATA_INIT)
     dumpNodesConfigList(jList)
 
 # 按各项单行格式保存list到文件
