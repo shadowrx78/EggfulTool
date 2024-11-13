@@ -96,7 +96,7 @@ class PrintLogger(object):  # create file like object
 
 
 # 设置tk报错回调
-Tk.report_callback_exception = py3_common.showError
+Tk.report_callback_exception = GlobalValue.showError
 
 
 # cmd命令相关

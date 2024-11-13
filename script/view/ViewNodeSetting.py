@@ -618,7 +618,7 @@ class ViewNodeSetting(BaseView):
             py3_common.Logging.error(e)
             return False
 
-        if not isinstance(tempData, dict):
+        if not isinstance(self.tempData, dict):
             py3_common.messageboxShowerror2('错误','格式错误',parent=self)
             return False
 
