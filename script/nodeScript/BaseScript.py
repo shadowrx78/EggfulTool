@@ -10,7 +10,7 @@ def setDebug(debug=False):
     DEBUG = debug
 
 # 修改界面
-def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None):
+def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None, tmExObj=None):
     if DEBUG:
         py3_common.Logging.debug('-----%s createEditUi-----' % SCRIPT_NAME)
     if data == None:

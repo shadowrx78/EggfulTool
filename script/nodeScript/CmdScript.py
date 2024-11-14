@@ -21,7 +21,7 @@ NOT_CLOSE_VAR = None
 AUTO_CD_VAR = None
 REL_PATH_VAR = None
 # 修改界面
-def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None):
+def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None, tmExObj=None):
     if DEBUG:
         py3_common.Logging.debug('-----%s createEditUi-----' % SCRIPT_NAME)
     
@@ -65,7 +65,7 @@ def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None):
     cTkObjFun(checkbuttonAutoCd)
 
     textCommand = Text(frame, height=4)
-    py3_common.bindTkEditorRightClick(textCommand, frame)
+    py3_common.bindTkEditorRightClick(textCommand, frame, tkThemeHelper=tmExObj['tkThemeHelper'])
     textCommand.grid(row=1,column=0,sticky='nsew')
     cTkObjFun(textCommand)
     tmExUi['textCommand'] = textCommand
@@ -112,7 +112,7 @@ def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None):
     cTkObjFun(checkbuttonRelPath)
 
     textPath = Text(frame, height=4)
-    py3_common.bindTkEditorRightClick(textPath, frame)
+    py3_common.bindTkEditorRightClick(textPath, frame, tkThemeHelper=tmExObj['tkThemeHelper'])
     textPath.grid(row=3,column=0,sticky='nsew')
     cTkObjFun(textPath)
     tmExUi['textPath'] = textPath

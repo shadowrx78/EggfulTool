@@ -17,7 +17,7 @@ def setDebug(debug=False):
     DEBUG = debug
 
 # 修改界面
-def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None):
+def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None, tmExObj=None):
     if DEBUG:
         py3_common.Logging.debug('-----%s createEditUi-----' % SCRIPT_NAME)
 
@@ -33,7 +33,7 @@ def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None):
     cTkObjFun(labelLineTag)
 
     entryLineTag = Entry(frameLineTag, width=10)
-    py3_common.bindTkEditorRightClick(entryLineTag, frame)
+    py3_common.bindTkEditorRightClick(entryLineTag, frame, tkThemeHelper=tmExObj['tkThemeHelper'])
     entryLineTag.grid(row=1,column=0,sticky='w')
     tmExUi['entryLineTag'] = entryLineTag
     py3_common.setEntryText(entryLineTag, data['lineTag'] if 'lineTag' in data else '-')
@@ -48,7 +48,7 @@ def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None):
     cTkObjFun(labelFontSize)
 
     entryFontSize = Entry(frameFontSize, width=10)
-    py3_common.bindTkEditorRightClick(entryFontSize, frame)
+    py3_common.bindTkEditorRightClick(entryFontSize, frame, tkThemeHelper=tmExObj['tkThemeHelper'])
     entryFontSize.grid(row=1,column=0,sticky='w')
     tmExUi['entryFontSize'] = entryFontSize
     py3_common.setEntryText(entryFontSize, data['fontSize'] if 'fontSize' in data else '')

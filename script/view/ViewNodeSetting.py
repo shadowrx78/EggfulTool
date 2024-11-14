@@ -48,6 +48,7 @@ class ViewNodeSetting(BaseView):
         self.tempData = py3_common.deep_copy_dict(data) if data else dict()
         self.tmExUi = dict()
         self.tmExFun = None
+        self.tmExObj = None
         self.tlScriptUi = list()
         self.tmOldColor = dict()
         self.initUi()
@@ -132,14 +133,14 @@ class ViewNodeSetting(BaseView):
             labelW.grid(row=0,column=0)
             self.tkThemeHelper.addTkObj(labelW)
             entryW = Entry(frameWH, width=4)
-            py3_common.bindTkEditorRightClick(entryW, self)
+            py3_common.bindTkEditorRightClick(entryW, self, tkThemeHelper=self.tkThemeHelper)
             entryW.grid(row=0,column=1)
             self.tkThemeHelper.addTkObj(entryW)
             labelH = Label(frameWH, text='H', anchor='w')
             labelH.grid(row=0,column=2)
             self.tkThemeHelper.addTkObj(labelH)
             entryH = Entry(frameWH, width=4)
-            py3_common.bindTkEditorRightClick(entryH, self)
+            py3_common.bindTkEditorRightClick(entryH, self, tkThemeHelper=self.tkThemeHelper)
             entryH.grid(row=0,column=3)
             self.tkThemeHelper.addTkObj(entryH)
             self.entryW = entryW
@@ -198,7 +199,7 @@ class ViewNodeSetting(BaseView):
             labelTitle.grid(row=0,column=0,sticky='ew')
             self.tkThemeHelper.addTkObj(labelTitle)
             textTitle = Text(frameTitle, height=4)
-            py3_common.bindTkEditorRightClick(textTitle, self)
+            py3_common.bindTkEditorRightClick(textTitle, self, tkThemeHelper=self.tkThemeHelper)
             textTitle.grid(row=1,column=0,sticky='nsew')
             self.textTitle = textTitle
             self.tkThemeHelper.addTkObj(textTitle)
@@ -374,10 +375,14 @@ class ViewNodeSetting(BaseView):
                 tmExFun = dict()
                 tmExFun['createColorLabelBtn'] = self.createColorLabelBtn
                 self.tmExFun = tmExFun
+            if not self.tmExObj:
+                tmExObj = dict()
+                tmExObj['tkThemeHelper'] = self.tkThemeHelper
+                self.tmExObj = tmExObj
 
             key = getSettingKey(tempData)
             script = getImportModule(getModuleNameWithTypeStr(key))
-            script.createEditUi(frameMiddle, self.tmExUi, tempData, self.addScriptUi, self.dnd, self.tmExFun)
+            script.createEditUi(frameMiddle, self.tmExUi, tempData, self.addScriptUi, self.dnd, self.tmExFun, self.tmExObj)
         except Exception as e:
             py3_common.Logging.error(e)
 

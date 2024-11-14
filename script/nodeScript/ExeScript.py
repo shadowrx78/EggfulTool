@@ -18,7 +18,7 @@ def setDebug(debug=False):
 
 REL_PATH_VAR = None
 # 修改界面
-def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None):
+def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None, tmExObj=None):
     if DEBUG:
         py3_common.Logging.debug('-----%s createEditUi-----' % SCRIPT_NAME)
 
@@ -41,7 +41,7 @@ def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None):
     cTkObjFun(checkbuttonRelPath)
 
     entryPath = Entry(frame)
-    py3_common.bindTkEditorRightClick(entryPath, frame)
+    py3_common.bindTkEditorRightClick(entryPath, frame, tkThemeHelper=tmExObj['tkThemeHelper'])
     entryPath.grid(row=1,column=0,sticky='ew',padx=4,ipady=10)
     cTkObjFun(entryPath)
     tmExUi['entryPath'] = entryPath
