@@ -42,7 +42,7 @@ from .EventProxy import *
 #----------------global value & enum----------------
 
 # debug模式
-IS_DEBUG = False
+IS_DEBUG = True
 # eventProxy派发事件是否显示参数
 IS_EVENTPROXY_SHOW_ARGS = False
 
