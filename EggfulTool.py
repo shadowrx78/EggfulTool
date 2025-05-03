@@ -941,6 +941,7 @@ ctrl+tab：切换模式
             # self.clipboard_clear()
             # self.clipboard_append(copyStr)
             GlobalValue.copyStr2Clipboard(copyStr)
+            messagebox.showinfo('提示', '复制json成功', parent=self)
             return True
         return False
 
