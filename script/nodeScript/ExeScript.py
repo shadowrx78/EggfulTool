@@ -8,6 +8,7 @@ from tkinter import filedialog
 from tkinter import messagebox
 from tkinter.messagebox import showerror
 from .. import py3_common
+from .. import GlobalValue
 
 SCRIPT_NAME = 'ExeScript'
 DEBUG = True
@@ -84,7 +85,8 @@ def saveData(tmExUi, data):
 
 # 额外的保留字段
 def getTlAdvSaveKey():
-    return ['exePath']
+    # return ['exePath']
+    return GlobalValue.TMTL_TYPE_ADV_KEY['exe']
 
 # 按钮操作
 def onBtnClick(data=None):

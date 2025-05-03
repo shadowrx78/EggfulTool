@@ -95,7 +95,8 @@ def saveData(tmExUi, data):
 
 # 额外的保留字段
 def getTlAdvSaveKey():
-    return ['fgColor', 'fontSize']
+    # return ['fgColor', 'fontSize']
+    return GlobalValue.TMTL_TYPE_ADV_KEY['line']
 
 # 按钮操作
 def onBtnClick(data=None):

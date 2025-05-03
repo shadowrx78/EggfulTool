@@ -8,6 +8,7 @@ from tkinter import filedialog
 from tkinter import messagebox
 from tkinter.messagebox import showerror
 from .. import py3_common
+from .. import GlobalValue
 
 SCRIPT_NAME = 'FolderScript'
 DEBUG = True
@@ -83,7 +84,8 @@ def saveData(tmExUi, data):
 
 # 额外的保留字段
 def getTlAdvSaveKey():
-    return ['folderPath']
+    # return ['folderPath']
+    return GlobalValue.TMTL_TYPE_ADV_KEY['folder']
 
 # 按钮操作
 def onBtnClick(data=None):

@@ -9,6 +9,7 @@ from tkinter import messagebox
 from tkinter.messagebox import showerror
 from sys import platform
 from .. import py3_common
+from .. import GlobalValue
 
 SCRIPT_NAME = 'CmdScript'
 DEBUG = True
@@ -233,7 +234,8 @@ def saveData(tmExUi, data):
 
 # 额外的保留字段
 def getTlAdvSaveKey():
-    return ['command', 'tlFilePath', 'notClose', 'openNewCmdWindow', 'autoCd']
+    # return ['command', 'tlFilePath', 'notClose', 'openNewCmdWindow', 'autoCd']
+    return GlobalValue.TMTL_TYPE_ADV_KEY['cmd']
 
 # 按钮操作
 def onBtnClick(data=None):

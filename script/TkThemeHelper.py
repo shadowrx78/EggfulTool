@@ -4,6 +4,9 @@
 from . import py3_common
 from . import GlobalValue
 from .GlobalValue import *
+import traceback
+import inspect
+import weakref
 
 
 # tk风格组件
@@ -17,8 +20,10 @@ class TkThemeHelper(object):
         # 坑比PanedWindow 2钟类名获取方式大小写不一样
         self.tlRawTkObjName = ['Entry', 'Text', 'Label', 'Frame',
         'Radiobutton', 'Button', 'Canvas', 'Checkbutton', 'Scale', 'Listbox', 'Menu', 'Toplevel', 'PanedWindow']
-        self.tlTkObj = set()
-        self.tlTkExObj = set()
+        # 改成弱引用
+        self.tlTkObj = weakref.WeakSet()
+        self.tlTkExObj = weakref.WeakSet()
+        self.debugLevel = 0
         self.initEventListen()
 
     def getClassName(self):
@@ -40,6 +45,15 @@ class TkThemeHelper(object):
     # 添加tk对象
     def addTkObj(self, tkObj, isForceRaw=False):
         className = tkObj.__class__.__name__
+        if self.debugLevel > 0:
+            py3_common.Logging.debug('-----------addTkObj')
+            py3_common.Logging.debug(className, tkObj)
+            if self.debugLevel > 1:
+                stack = inspect.stack()
+                # 获取调用者的信息
+                callerInfo = inspect.getframeinfo(stack[1][0])
+                py3_common.Logging.info(callerInfo)
+                del stack
         if className in self.tlRawTkObjName or isForceRaw:
             self.tlTkObj.add(tkObj)
         else:
@@ -47,6 +61,15 @@ class TkThemeHelper(object):
 
     # 移除tk对象
     def removeTkObj(self, tkObj):
+        if self.debugLevel > 0:
+            py3_common.Logging.debug('-----------removeTkObj')
+            py3_common.Logging.debug(tkObj)
+            if self.debugLevel > 1:
+                stack = inspect.stack()
+                # 获取调用者的信息
+                callerInfo = inspect.getframeinfo(stack[1][0])
+                py3_common.Logging.info(callerInfo)
+                del stack
         try:
             self.tlTkObj.remove(tkObj)
         except Exception as e:
@@ -78,3 +101,8 @@ class TkThemeHelper(object):
         self.tlTkObj.clear()
         self.tlTkExObj.clear()
         self.removeAllEventListen()
+
+
+    # -----------------------------测试-----------------------------
+    def setDebugLevel(self, debugLevel):
+        self.debugLevel = debugLevel

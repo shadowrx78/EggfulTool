@@ -481,28 +481,28 @@ class ViewNodeSetting(BaseView):
     def getIndex(self):
         return self.index
 
-    # 筛选保留字段
-    def screenKey(self, data):
-        try:
-            key = getSettingKey(data)
-            tlSaveKey = set()
+    # # 筛选保留字段
+    # def screenKey(self, data):
+    #     try:
+    #         key = getSettingKey(data)
+    #         tlSaveKey = set()
 
-            for k in GlobalValue.TMTL_BASE_KEY[data['nodeType']]:
-                tlSaveKey.add(k)
+    #         for k in GlobalValue.TMTL_BASE_KEY[data['nodeType']]:
+    #             tlSaveKey.add(k)
 
-            script = getImportModule(getModuleNameWithTypeStr(key))
-            tlAdvSaveKey = script.getTlAdvSaveKey()
-            for k in tlAdvSaveKey:
-                tlSaveKey.add(k)
+    #         script = getImportModule(getModuleNameWithTypeStr(key))
+    #         tlAdvSaveKey = script.getTlAdvSaveKey()
+    #         for k in tlAdvSaveKey:
+    #             tlSaveKey.add(k)
 
-            tlDelKey = list()
-            for k in data:
-                if not k in tlSaveKey:
-                    tlDelKey.append(k)
-            for k in tlDelKey:
-                del data[k]
-        except Exception as e:
-            py3_common.Logging.error(e)
+    #         tlDelKey = list()
+    #         for k in data:
+    #             if not k in tlSaveKey:
+    #                 tlDelKey.append(k)
+    #         for k in tlDelKey:
+    #             del data[k]
+    #     except Exception as e:
+    #         py3_common.Logging.error(e)
 
     # 设置类型进data
     def setDataTypeKey(self, key, data):
@@ -517,6 +517,7 @@ class ViewNodeSetting(BaseView):
         tempData = self.getSaveTempData()
         if not tempData:
             return False
+        self.tempData = tempData
 
         # 保存
         try:
@@ -540,7 +541,7 @@ class ViewNodeSetting(BaseView):
         return True
 
     def getSaveTempData(self):
-        tempData = self.tempData
+        tempData = py3_common.deep_copy_dict(self.tempData)
         key = getSettingKey(tempData)
 
         # 启用拖入选中框
@@ -592,7 +593,8 @@ class ViewNodeSetting(BaseView):
         # except Exception as e:
         #     py3_common.Logging.error(e)
 
-        self.screenKey(tempData)
+        # self.screenKey(tempData)
+        tempData = getStandardNodeData(tempData)
         # print(tempData)
         return tempData
 

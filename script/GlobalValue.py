@@ -205,6 +205,13 @@ TMTL_BASE_KEY = {
     'Line': ['nodeType', 'bgColor', 'height', 'lineTag', 'text'],
     'Btn': ['nodeType', 'bgColor', 'width', 'height', 'btnText', 'typeStr', 'useDrop', 'bookmark', 'askExeMark', 'disable']
 }
+# 节点额外属性
+TMTL_TYPE_ADV_KEY = {
+    'line': ['fgColor', 'fontSize'],
+    'folder': ['folderPath'],
+    'exe': ['exePath'],
+    'cmd': ['command', 'tlFilePath', 'notClose', 'openNewCmdWindow', 'autoCd']
+}
 
 
 
@@ -739,6 +746,33 @@ def addDeletedNodeBackup(nodeConfig):
     tlDeletedNode.append(nodeConfig)
     # py3_common.dumpJsonFromList(DELETED_NODES_BACKUP_JSON_PATH, tlDeletedNode, 2, print_dump_path=True)
     return dumpListToJsonFile(tlDeletedNode, DELETED_NODES_BACKUP_JSON_PATH, print_dump_path=True)
+
+# 获取标准格式节点数据
+def getStandardNodeData(nodeData):
+    tempData = py3_common.deep_copy_dict(nodeData)
+
+    # 筛选保留字段
+    try:
+        key = getSettingKey(tempData)
+        tlSaveKey = set()
+
+        for k in TMTL_BASE_KEY[tempData['nodeType']]:
+            tlSaveKey.add(k)
+
+        tlAdvSaveKey = TMTL_TYPE_ADV_KEY[key]
+        for k in tlAdvSaveKey:
+            tlSaveKey.add(k)
+
+        tlDelKey = list()
+        for k in tempData:
+            if not k in tlSaveKey:
+                tlDelKey.append(k)
+        for k in tlDelKey:
+            del tempData[k]
+    except Exception as e:
+        py3_common.Logging.error(e)
+
+    return tempData
 
 # 创建颜色配置json
 def createSettingConfigJson():

@@ -927,13 +927,15 @@ ctrl+tab：切换模式
     def copySelectNodeConfig(self):
         if GlobalValue.NOW_SELECT_INDEX != None and GlobalValue.UI_MODE == UiModeEnum.Edit:
             # tlNodeData = self.virtualListFrame.getTlData()
-            tlNodeData = GlobalValue.TEMP_NODE_LIST
+            # tlNodeData = GlobalValue.TEMP_NODE_LIST
+            tlNodeData = self.getTlNodeDataForVirtualList()
             if not tlNodeData or GlobalValue.NOW_SELECT_INDEX >= len(tlNodeData):
                 return False
             nodeData = tlNodeData[GlobalValue.NOW_SELECT_INDEX]
             if nodeData['nodeType'] == 'Create':
                 return False
-            copyStr = json.dumps(nodeData, ensure_ascii=False, indent=None, sort_keys=False)
+            tempData = getStandardNodeData(nodeData)
+            copyStr = json.dumps(tempData, ensure_ascii=False, indent=None, sort_keys=False)
             py3_common.Logging.debug('-----copy nodeData-----')
             py3_common.Logging.debug(copyStr)
             # self.clipboard_clear()
@@ -1857,8 +1859,11 @@ ctrl+tab：切换模式
     # 测试报错
     def menuTestShowError(self):
         # py3_common.Logging.error('测试')
-        temp = 1234
-        temp2 = '' + temp
+        try:
+            temp = 1234
+            temp2 = '' + temp
+        except Exception as e:
+            raise e
 
 
 
