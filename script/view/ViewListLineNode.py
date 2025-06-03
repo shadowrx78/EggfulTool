@@ -31,6 +31,7 @@ from .. import py3_common, GlobalValue
 from ..GlobalValue import *
 from ..EventProxy import *
 from .BaseView import *
+from ..extend.UndoEntry import UndoEntry
 
 M_PageShowNum = 7     #一页显示多少个，要算出来太复杂，直接写死
 
@@ -125,9 +126,9 @@ class ViewListLineNode(BaseView):
 
         # 搜索输入
         callback = self.register(self.searchEntryCallback)    #输入回调
-        searchEntry = Entry(frameMiddle, validate='key', validatecommand=(callback, '%P'))
+        searchEntry = UndoEntry(frameMiddle, validate='key', validatecommand=(callback, '%P'))
         searchEntry.grid(row=0, column=0, sticky='ew', pady=10)
-        self.tkThemeHelper.addTkObj(searchEntry)
+        self.tkThemeHelper.addTkObj(searchEntry, isForceRaw=True)
         py3_common.bindTkEditorRightClick(searchEntry, self, tkThemeHelper=self.tkThemeHelper)
         self.searchEntry = searchEntry
         searchEntry.focus_set()

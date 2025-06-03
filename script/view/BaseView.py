@@ -23,6 +23,7 @@ import sys
 from sys import platform
 from importlib import import_module
 import traceback
+import uuid
 
 # import ccbparser
 # import plistlib
@@ -52,6 +53,9 @@ class BaseView(Toplevel):
         self.tlEventHandle = list()
 
         self.oldFocusWidget = None
+
+        self.uid = str(uuid.uuid4())    #唯一标识符
+        self._tmViewUid = dict()
 
         self.bind('<FocusIn>', self.onFocusIn)
 
@@ -138,12 +142,13 @@ class BaseView(Toplevel):
             widget = self.focus_get()
         except Exception as e:
             raise e
-        self.oldFocusWidget = widget
+        if widget != None:
+            self.oldFocusWidget = widget
 
     def reFocusOldFocusWidget(self):
         if self.oldFocusWidget:
             self.oldFocusWidget.focus_set()
-            self.oldFocusWidget = None
+            # self.oldFocusWidget = None
 
 
     # -----------------------------事件相关-----------------------------
@@ -155,3 +160,20 @@ class BaseView(Toplevel):
     def removeAllEventListen(self):
         removeTlEventListener(self.tlEventHandle)
         self.tlEventHandle = list()
+
+
+    # -----------------------------界面标识相关-----------------------------
+    # 获取唯一标识
+    def getUid(self):
+        return self.uid
+
+    # 记录子界面uid
+    def markViewUid(self, view):
+        self._tmViewUid[view.getClassName()] = view.getUid()
+
+    # 根据uid判断界面是否为子界面
+    def isViewUidInMark(self, view):
+        return self.isViewUidInMarkWithClassName(view.getClassName(), view.getUid())
+
+    def isViewUidInMarkWithClassName(self, className, uid):
+        return className in self._tmViewUid and self._tmViewUid[className] == uid

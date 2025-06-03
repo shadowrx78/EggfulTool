@@ -40,10 +40,10 @@ def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None, tmExObj
     checkbuttonRelPath.grid(row=0, column=1, sticky='w', padx=10)
     cTkObjFun(checkbuttonRelPath)
 
-    entryPath = Entry(frame)
+    entryPath = tmExObj['UndoEntry'](frame)
     py3_common.bindTkEditorRightClick(entryPath, frame, tkThemeHelper=tmExObj['tkThemeHelper'])
     entryPath.grid(row=1,column=0,sticky='ew',padx=4,ipady=10)
-    cTkObjFun(entryPath)
+    cTkObjFun(entryPath, isForceRaw=True)
     tmExUi['entryPath'] = entryPath
     if dnd:
         dnd.bindtarget(entryPath, 'text/uri-list', '<Drop>', lambda files,tmExUi=tmExUi:onEntryPathDrop(tmExUi, files), ('%D',))
@@ -51,6 +51,10 @@ def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None, tmExObj
     # 初始化
     if 'folderPath' in data:
         py3_common.setEntryText(entryPath, data['folderPath'])
+        try:
+            entryPath.clearLog()
+        except Exception as e:
+            pass
 
 
 def onEntryPathDrop(tmExUi, files=''):

@@ -32,12 +32,16 @@ def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None, tmExObj
     labelLineTag.grid(row=0,column=0,sticky='w')
     cTkObjFun(labelLineTag)
 
-    entryLineTag = Entry(frameLineTag, width=10)
+    entryLineTag = tmExObj['UndoEntry'](frameLineTag, width=10)
     py3_common.bindTkEditorRightClick(entryLineTag, frame, tkThemeHelper=tmExObj['tkThemeHelper'])
     entryLineTag.grid(row=1,column=0,sticky='w')
     tmExUi['entryLineTag'] = entryLineTag
     py3_common.setEntryText(entryLineTag, data['lineTag'] if 'lineTag' in data else '-')
-    cTkObjFun(entryLineTag)
+    try:
+        entryLineTag.clearLog()
+    except Exception as e:
+        pass
+    cTkObjFun(entryLineTag, isForceRaw=True)
 
     # 字号输入框
     frameFontSize = Frame(frame1)
@@ -47,12 +51,16 @@ def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None, tmExObj
     labelFontSize.grid(row=0,column=0,sticky='w')
     cTkObjFun(labelFontSize)
 
-    entryFontSize = Entry(frameFontSize, width=10)
+    entryFontSize = tmExObj['UndoEntry'](frameFontSize, width=10)
     py3_common.bindTkEditorRightClick(entryFontSize, frame, tkThemeHelper=tmExObj['tkThemeHelper'])
     entryFontSize.grid(row=1,column=0,sticky='w')
     tmExUi['entryFontSize'] = entryFontSize
     py3_common.setEntryText(entryFontSize, data['fontSize'] if 'fontSize' in data else '')
-    cTkObjFun(entryFontSize)
+    try:
+        entryFontSize.clearLog()
+    except Exception as e:
+        pass
+    cTkObjFun(entryFontSize, isForceRaw=True)
 
 
     labelColorTitle = Label(frame, text='颜色：(右键点击还原默认颜色)', anchor='w')

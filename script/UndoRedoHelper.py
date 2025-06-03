@@ -72,10 +72,12 @@ class UndoRedoHelper(object):
     撤销
     参数:
     nowData:dict|list 当前数据，函数会直接修改这个数据
+    isTest:bool 为True时不改变记录指针，用于不改变记录获取前一步数据
+    noDispatch:bool 为True时不抛出事件
     返回:
     suc:bool 操作是否成功
     """
-    def undo(self, nowData):
+    def undo(self, nowData, isTest=False, noDispatch=False):
         if self.recordPointer < 0 or len(self.tlOperRecord) == 0:
             return False
         try:
@@ -90,9 +92,11 @@ class UndoRedoHelper(object):
             elif recordData['oper'] == self.OperModify:
                 # 改回旧值
                 py3_common.setValueWithTlKey(nowData, recordData['tlKey'], recordData['oldValue'], isDel=False, isInsert=False)
-            self.recordPointer -= 1
-            dispatchEvent(EventType.Event_UndoRedoHelperUndo, self.uid)
-            dispatchEvent(EventType.Event_UndoRedoHelperDataChange, self.uid)
+            if not isTest:
+                self.recordPointer -= 1
+            if not isTest and not noDispatch:
+                dispatchEvent(EventType.Event_UndoRedoHelperUndo, self.uid)
+                dispatchEvent(EventType.Event_UndoRedoHelperDataChange, self.uid)
             return True
         except Exception as e:
             # raise e
@@ -103,10 +107,11 @@ class UndoRedoHelper(object):
     重做
     参数:
     nowData:dict|list 当前数据，函数会直接修改这个数据
+    isTest:bool 为True时不改变记录指针，用于不改变记录获取后一步数据
     返回:
     suc:bool 操作是否成功
     """
-    def redo(self, nowData):
+    def redo(self, nowData, isTest=False, noDispatch=False):
         if self.recordPointer >= len(self.tlOperRecord)-1 or len(self.tlOperRecord) == 0:
             return False
         try:
@@ -121,9 +126,11 @@ class UndoRedoHelper(object):
             elif recordData['oper'] == self.OperModify:
                 # 改成新值
                 py3_common.setValueWithTlKey(nowData, recordData['tlKey'], recordData['newValue'], isDel=False, isInsert=False)
-            self.recordPointer += 1
-            dispatchEvent(EventType.Event_UndoRedoHelperRedo, self.uid)
-            dispatchEvent(EventType.Event_UndoRedoHelperDataChange, self.uid)
+            if not isTest:
+                self.recordPointer += 1
+            if not isTest and not noDispatch:
+                dispatchEvent(EventType.Event_UndoRedoHelperRedo, self.uid)
+                dispatchEvent(EventType.Event_UndoRedoHelperDataChange, self.uid)
             return True
         except Exception as e:
             # raise e
@@ -138,6 +145,42 @@ class UndoRedoHelper(object):
 
     # 设置数据
     def setValueWithTlKey(self, nowData, tlKey, value, isDel=False, isInsert=False):
+        # oldValue, suc = py3_common.getValueWithTlKey(nowData, tlKey)
+        # if len(tlKey) == 0 and suc:
+        #     oldValue = py3_common.deep_copy_dict(oldValue, isOrdered=False)
+        # py3_common.setValueWithTlKey(nowData, tlKey, value, isDel=isDel, isInsert=isInsert)
+        # if isDel:
+        #     self.recordOper(UndoRedoHelper.OperDelete, tlKey, oldValue=oldValue)
+        # else:
+        #     if suc and not isInsert:
+        #         self.recordOper(UndoRedoHelper.OperModify, tlKey, newValue=value, oldValue=oldValue)
+        #     else:
+        #         self.recordOper(UndoRedoHelper.OperAdd, tlKey, newValue=value)
+        return self.setValueWithTlKeyCoverRecord(nowData, tlKey, value, isDel=isDel, isInsert=isInsert, coverStep=0)
+
+    # 测试设置数据
+    def testSetValueWithTlKey(self, nowData, tlKey, value, isDel=False, isInsert=False):
+        nowData_ = py3_common.deep_copy_dict(nowData, isOrdered=False)
+        oldValue, suc = py3_common.getValueWithTlKey(nowData_, tlKey)
+        if len(tlKey) == 0 and suc:
+            oldValue = py3_common.deep_copy_dict(oldValue, isOrdered=False)
+        py3_common.setValueWithTlKey(nowData_, tlKey, value, isDel=isDel, isInsert=isInsert)
+
+    """
+    设置数据，但是覆盖栈顶记录
+    参数:
+    nowData:dict|list 当前数据，函数会直接修改这个数据
+    tlKey:list 修改的字段在数据内地址，空列表表示修改整个dictOrList
+    value:any 写入值
+    isDel:bool True时删除字段
+    isInsert:bool 是否插入字段，只有当值所在位置是list才生效，True时插入，False时覆盖
+    coverStep:int 回滚步长，-1表示回退到前1步再覆盖
+    """
+    def setValueWithTlKeyCoverRecord(self, nowData, tlKey, value, isDel=False, isInsert=False, coverStep=-1):
+        if coverStep < 0:
+            for i in range(coverStep,0):
+                self.undo(nowData, noDispatch=True)
+
         oldValue, suc = py3_common.getValueWithTlKey(nowData, tlKey)
         if len(tlKey) == 0 and suc:
             oldValue = py3_common.deep_copy_dict(oldValue, isOrdered=False)
@@ -149,14 +192,6 @@ class UndoRedoHelper(object):
                 self.recordOper(UndoRedoHelper.OperModify, tlKey, newValue=value, oldValue=oldValue)
             else:
                 self.recordOper(UndoRedoHelper.OperAdd, tlKey, newValue=value)
-
-    # 测试设置数据
-    def testSetValueWithTlKey(self, nowData, tlKey, value, isDel=False, isInsert=False):
-        nowData_ = py3_common.deep_copy_dict(nowData, isOrdered=False)
-        oldValue, suc = py3_common.getValueWithTlKey(nowData_, tlKey)
-        if len(tlKey) == 0 and suc:
-            oldValue = py3_common.deep_copy_dict(oldValue, isOrdered=False)
-        py3_common.setValueWithTlKey(nowData_, tlKey, value, isDel=isDel, isInsert=isInsert)
 
     # 是否有改动
     def hasModify(self):

@@ -1253,6 +1253,10 @@ def setEntryText(entry, text):
     except Exception as e:
         pass
     entry.insert(0, text)
+    try:
+        entry.onFunctionEditText()
+    except Exception as e:
+        pass
 
 # 文本框
 def getTextText(text):
@@ -1269,20 +1273,24 @@ def setTextText(text, textStr):
     except Exception as e:
         pass
     text.insert('1.0', textStr)
+    try:
+        text.onFunctionEditText()
+    except Exception as e:
+        pass
 
 # 输入框&文本框
 def setEditorEnable(editor, enable):
     editor.configure(state='normal' if enable else 'disabled')
 
 def setEditorText(editor, text):
-    className = editor.__class__.__name__
+    className = editor.winfo_class()
     if className == 'Entry':
         return setEntryText(editor, text)
     elif className == 'Text':
         return setTextText(editor, text)
 
 def getEditorText(editor):
-    className = editor.__class__.__name__
+    className = editor.winfo_class()
     if className == 'Entry':
         return getEntryText(editor)
     elif className == 'Text':
@@ -1290,7 +1298,7 @@ def getEditorText(editor):
 
 # 获取光标位置
 def getEditorCursorPos(editor):
-    className = editor.__class__.__name__
+    className = editor.winfo_class()
     line, column = None, None
     lineEnd, columnEnd = None, None
     if className == 'Entry':
@@ -1326,7 +1334,7 @@ def getEditorCursorPos(editor):
 def setEditorCursorPos(editor, line, column):
     if line == None or column == None:
         return
-    className = editor.__class__.__name__
+    className = editor.winfo_class()
     if className == 'Entry':
         editor.icursor(column)
     elif className == 'Text':
@@ -1345,7 +1353,7 @@ def _onTkEditorRightClick(event, editor, menubar):
     isEnable = True
     isEntry = False
     try:
-        isEntry = editor.__class__.__name__ == 'Entry'
+        isEntry = editor.winfo_class() == 'Entry'
         isEnable = editor['state'] != 'disabled'
     except Exception as e:
         # raise e

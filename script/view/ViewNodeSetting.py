@@ -31,6 +31,8 @@ from .. import py3_common, GlobalValue
 from ..GlobalValue import *
 from ..EventProxy import *
 from .BaseView import *
+from ..extend.UndoEntry import UndoEntry
+from ..extend.UndoText import UndoText
 
 # 节点设置界面
 class ViewNodeSetting(BaseView):
@@ -132,17 +134,17 @@ class ViewNodeSetting(BaseView):
             labelW = Label(frameWH, text='W', anchor='w')
             labelW.grid(row=0,column=0)
             self.tkThemeHelper.addTkObj(labelW)
-            entryW = Entry(frameWH, width=4)
+            entryW = UndoEntry(frameWH, width=4)
             py3_common.bindTkEditorRightClick(entryW, self, tkThemeHelper=self.tkThemeHelper)
             entryW.grid(row=0,column=1)
-            self.tkThemeHelper.addTkObj(entryW)
+            self.tkThemeHelper.addTkObj(entryW, isForceRaw=True)
             labelH = Label(frameWH, text='H', anchor='w')
             labelH.grid(row=0,column=2)
             self.tkThemeHelper.addTkObj(labelH)
-            entryH = Entry(frameWH, width=4)
+            entryH = UndoEntry(frameWH, width=4)
             py3_common.bindTkEditorRightClick(entryH, self, tkThemeHelper=self.tkThemeHelper)
             entryH.grid(row=0,column=3)
-            self.tkThemeHelper.addTkObj(entryH)
+            self.tkThemeHelper.addTkObj(entryH, isForceRaw=True)
             self.entryW = entryW
             self.entryH = entryH
 
@@ -198,11 +200,11 @@ class ViewNodeSetting(BaseView):
             labelTitle = Label(frameTitle, text='标题：', anchor='w')
             labelTitle.grid(row=0,column=0,sticky='ew')
             self.tkThemeHelper.addTkObj(labelTitle)
-            textTitle = Text(frameTitle, height=4)
+            textTitle = UndoText(frameTitle, height=4)
             py3_common.bindTkEditorRightClick(textTitle, self, tkThemeHelper=self.tkThemeHelper)
             textTitle.grid(row=1,column=0,sticky='nsew')
             self.textTitle = textTitle
-            self.tkThemeHelper.addTkObj(textTitle)
+            self.tkThemeHelper.addTkObj(textTitle, isForceRaw=True)
 
             textTitleVsb = ttk.Scrollbar(frameTitle,orient="vertical",command=textTitle.yview)
             textTitle.configure(yscrollcommand=textTitleVsb.set)
@@ -314,6 +316,11 @@ class ViewNodeSetting(BaseView):
         dw, dh = self.getDefaultSize(key)
         py3_common.setEntryText(entryW, str(tempData['width']) if 'width' in tempData else str(dw))
         py3_common.setEntryText(entryH, str(tempData['height']) if 'height' in tempData else str(dh))
+        try:
+            entryW.clearLog()
+            entryH.clearLog()
+        except Exception as e:
+            pass
 
         # 打开所在位置按钮
         buttonOpenDir = self.buttonOpenDir
@@ -343,6 +350,10 @@ class ViewNodeSetting(BaseView):
                 py3_common.setTextText(textTitle, tempData['text'] if 'text' in tempData else '')
             else:
                 py3_common.setTextText(textTitle, tempData['btnText'] if 'btnText' in tempData else '')
+            try:
+                textTitle.clearLog()
+            except Exception as e:
+                pass
 
     # 刷新中组件
     def updateFrameMiddle(self):
@@ -378,6 +389,8 @@ class ViewNodeSetting(BaseView):
             if not self.tmExObj:
                 tmExObj = dict()
                 tmExObj['tkThemeHelper'] = self.tkThemeHelper
+                tmExObj['UndoEntry'] = UndoEntry
+                tmExObj['UndoText'] = UndoText
                 self.tmExObj = tmExObj
 
             key = getSettingKey(tempData)
@@ -386,9 +399,9 @@ class ViewNodeSetting(BaseView):
         except Exception as e:
             py3_common.Logging.error(e)
 
-    def addScriptUi(self, tkObj):
+    def addScriptUi(self, tkObj, isForceRaw=False):
         self.tlScriptUi.append(tkObj)
-        self.tkThemeHelper.addTkObj(tkObj)
+        self.tkThemeHelper.addTkObj(tkObj, isForceRaw=isForceRaw)
 
     def removeAllScriptUi(self):
         for i in range(0,len(self.tlScriptUi)):

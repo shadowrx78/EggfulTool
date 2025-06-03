@@ -65,10 +65,10 @@ def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None, tmExObj
     checkbuttonAutoCd.grid(row=0, column=4, sticky='w', padx=10)
     cTkObjFun(checkbuttonAutoCd)
 
-    textCommand = Text(frame, height=4)
+    textCommand = tmExObj['UndoText'](frame, height=4)
     py3_common.bindTkEditorRightClick(textCommand, frame, tkThemeHelper=tmExObj['tkThemeHelper'])
     textCommand.grid(row=1,column=0,sticky='nsew')
-    cTkObjFun(textCommand)
+    cTkObjFun(textCommand, isForceRaw=True)
     tmExUi['textCommand'] = textCommand
 
     textCommandVsb = ttk.Scrollbar(frame,orient="vertical",command=textCommand.yview)
@@ -112,10 +112,10 @@ def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None, tmExObj
     checkbuttonRelPath.grid(row=0, column=2, sticky='w', padx=10)
     cTkObjFun(checkbuttonRelPath)
 
-    textPath = Text(frame, height=4)
+    textPath = tmExObj['UndoText'](frame, height=4)
     py3_common.bindTkEditorRightClick(textPath, frame, tkThemeHelper=tmExObj['tkThemeHelper'])
     textPath.grid(row=3,column=0,sticky='nsew')
-    cTkObjFun(textPath)
+    cTkObjFun(textPath, isForceRaw=True)
     tmExUi['textPath'] = textPath
     if dnd:
         dnd.bindtarget(textPath, 'text/uri-list', '<Drop>', lambda files,tmExUi=tmExUi:onTextPathDrop(tmExUi, files), ('%D',))
@@ -130,6 +130,10 @@ def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None, tmExObj
         for i in range(0,len(data['tlFilePath'])):
             str_ += ('\n' if i != 0 else '') + data['tlFilePath'][i]
         py3_common.setTextText(textPath, str_)
+        try:
+            textPath.clearLog()
+        except Exception as e:
+            pass
         refreshPathCombobox(tmExUi)
         pathCombobox.current(0)
     if 'command' in data:
@@ -140,6 +144,10 @@ def createEditUi(frame, tmExUi, data, cTkObjFun, dnd=None, tmExFun=None, tmExObj
             py3_common.setTextText(textCommand, str_)
         else:
             py3_common.setTextText(textCommand, data['command'])
+        try:
+            textCommand.clearLog()
+        except Exception as e:
+            pass
 
 def onBtnTipsCommandClick(frame):
     tipsStr = u'''命令：
