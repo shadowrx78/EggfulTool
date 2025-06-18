@@ -25,6 +25,7 @@ class UndoText(Text):
         self.tlEventHandle = list()
         self.undoRedoHelper = UndoRedoHelper()
 
+        py3_common.bindTkTextSelectAllEvent(self)
         self.bind('<Control-z>', self.onKeyboardCtrlZClick)
         self.bind('<Control-y>', self.onKeyboardCtrlYClick)
         self.bind('<KeyRelease>', self.onKeyRelease)

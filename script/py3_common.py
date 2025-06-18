@@ -1376,6 +1376,21 @@ def bindTkEditorRightClick(editor, root, tkThemeHelper=None):
         tkThemeHelper.addTkObj(menubar)
     editor.bind('<Button-3>', lambda e, ent=editor, menu=menubar:_onTkEditorRightClick(e, ent, menu))
 
+def bindTkTextSelectAllEvent(editor):
+    editor.bind('<<SelectAll>>', lambda e, com=editor:_tkTextSelectAllStr(com))
+
+def _tkTextSelectAllStr(editor):
+    editorStr = getEditorText(editor)
+    editor.tag_remove("sel", "1.0", END)
+    if editorStr != None and len(editorStr) > 0:
+        tlLine = editorStr.splitlines()
+        r = len(tlLine)
+        c = len(tlLine[r-1])
+        editor.tag_add("sel", "1.0", "%d.%d" % (r,c))
+    else:
+        editor.tag_add("sel", "1.0", "1.0")
+    return 'break'
+
 # 按钮
 def setBtnEnable(btn, enable):
     # btn.configure(state='normal' if enable else 'disabled', fg='black' if enable else 'gray')
