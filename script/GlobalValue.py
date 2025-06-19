@@ -68,6 +68,9 @@ INIT_WINDOW_GUI = None
 # 事件代理
 EVENT_PROXY = None
 
+# 窗口图标
+WINDOW_ICON_PATH = None
+
 
 # 保存操作类型
 class SaveNodeDataOper:
@@ -446,6 +449,18 @@ def copyStr2Clipboard(str_):
 # 从剪贴板获取文本
 def getStrFromClipboard():
     return pyperclip.paste()
+
+# 设置窗口图标
+def setWindowIcon(window, iconPath=None):
+    if iconPath == None:
+        iconPath = WINDOW_ICON_PATH
+    if iconPath == None:
+        return
+    try:
+        window.iconbitmap(iconPath)
+    except Exception as e:
+        # raise e
+        pass
 
 
 # 文件修改时间转日期字符串

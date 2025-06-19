@@ -200,7 +200,9 @@ class MainGui(Frame):
         self.columnconfigure(0,weight=1)
 
         self.initWindow.title("%s v%s" % (PROGRAM_TITLE_NAME, PROGRAM_VERSION))           #窗口名
-        self.initWindow.iconbitmap(ICO_PATH)
+        # self.initWindow.iconbitmap(ICO_PATH)
+        GlobalValue.WINDOW_ICON_PATH = ICO_PATH
+        setWindowIcon(self.initWindow)
         #self.initWindow.geometry('320x160+10+10')                         #290 160为窗口大小，+10 +10 定义窗口弹出时的默认展示位置
         self.initWindow.geometry('1080x640')
         # self.initWindow["bg"] = "pink"                                    #窗口背景色，其他背景色见：blog.csdn.net/chl0000/article/details/7657887
