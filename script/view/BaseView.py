@@ -46,8 +46,6 @@ class BaseView(Toplevel):
         # 覆盖自带关闭按钮
         self.protocol("WM_DELETE_WINDOW", self.close)
 
-        setWindowIcon(self)
-
         self.tkThemeHelper = TkThemeHelper()
         self.tkThemeHelper.addTkObj(self, isForceRaw=True)
 

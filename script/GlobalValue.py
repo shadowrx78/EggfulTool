@@ -457,7 +457,7 @@ def setWindowIcon(window, iconPath=None):
     if iconPath == None:
         return
     try:
-        window.iconbitmap(iconPath)
+        window.iconbitmap(default=iconPath)
     except Exception as e:
         # raise e
         pass
