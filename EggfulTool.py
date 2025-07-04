@@ -567,6 +567,8 @@ class MainGui(Frame):
         # self.refreshColors()
         self.refreshOptions()
         self.refreshMainViewDebug()
+        self.reloadNowData()
+        dispatchEvent(EventType.Event_SettingColorChange)
         self.updateTlNode()
 
     # 设置
