@@ -41,17 +41,23 @@ from .EventProxy import *
 
 #----------------global value & enum----------------
 
-# debug模式
+# debug模式，初始填True防止启动丢日志
 IS_DEBUG = True
 # eventProxy派发事件是否显示参数
 IS_EVENTPROXY_SHOW_ARGS = False
 
-if IS_DEBUG:
-    py3_common.LOGGING_LEVEL = py3_common.LoggingLevelEnum.DEBUG
-    tkVirtualListHelper.LOGGING_LEVEL = tkVirtualListHelper.LoggingLevelEnum.DEBUG
-else:
-    py3_common.LOGGING_LEVEL = py3_common.LoggingLevelEnum.INFO
-    tkVirtualListHelper.LOGGING_LEVEL = tkVirtualListHelper.LoggingLevelEnum.INFO
+def refreshDebugMode(isStartUp=False):
+    if IS_DEBUG:
+        py3_common.LOGGING_LEVEL = py3_common.LoggingLevelEnum.DEBUG
+        tkVirtualListHelper.LOGGING_LEVEL = tkVirtualListHelper.LoggingLevelEnum.DEBUG
+        if not isStartUp:
+            EVENT_PROXY.setIsDebug(IS_DEBUG)
+    else:
+        py3_common.LOGGING_LEVEL = py3_common.LoggingLevelEnum.INFO
+        tkVirtualListHelper.LOGGING_LEVEL = tkVirtualListHelper.LoggingLevelEnum.INFO
+        if not isStartUp:
+            EVENT_PROXY.setIsDebug(IS_DEBUG)
+refreshDebugMode(isStartUp=True)
 
 # 模式
 class UiModeEnum:
@@ -560,6 +566,11 @@ def refreshProjectSetting():
             global TL_INIT_ERROR_MSG
             TL_INIT_ERROR_MSG.append(errStr)
         else:
+            if 'isDebug' in jList:
+                global IS_DEBUG
+                IS_DEBUG = jList['isDebug']
+            else:
+                IS_DEBUG = False
             # 刷新window透明度
             if 'windowAlpha' in jList:
                 global WINDOW_ALPHA
@@ -591,7 +602,10 @@ def refreshProjectSetting():
                 global TM_VIEW_POS
                 TM_VIEW_POS = jList['tmViewPos']
     else:
+        py3_common.Logging.info(u'没有找到设置配置json，初始化')
+        IS_DEBUG = False
         saveProjectSetting()
+    refreshDebugMode()
 
 # 保存项目设置
 def saveProjectSetting(print_dump_path=True):
@@ -602,6 +616,7 @@ def saveProjectSetting(print_dump_path=True):
 # 获取当前设置
 def getTmSettingData():
     jList = OrderedDict()
+    jList['isDebug'] = IS_DEBUG
     jList['tmSettingColor'] = getTmBtnTypeColorRemoveDefault()
     jList['windowAlpha'] = WINDOW_ALPHA
     # jList['tlSettingKey'] = TL_SETTING_KEY

@@ -283,9 +283,14 @@ class MainGui(Frame):
         self.tkThemeHelper.addTkObj(self.menuDebug)
         self.menuDebug.add_command(label="查看当前环境变量",command=self.menuPrintEnviron)
         self.menuDebug.add_command(label="复制环境变量到剪贴板",command=self.menuCopyEnvironToClipboard)
-        if GlobalValue.IS_DEBUG:
-            self.menuDebug.add_command(label="测试报错",command=self.menuTestShowError)
-            self.menuDebug.add_command(label="测试双击小图标",command=self.onSysTrayLDoubleClick)
+        self.isOpenDebugVar = IntVar()
+        self.isOpenDebugVar.set(1 if GlobalValue.IS_DEBUG else 0)
+        self.menuDebug.add_checkbutton(label="开启Debug", command=self.menuOpenDebug, variable=self.isOpenDebugVar)
+        self.isMenuDebugAddDebugCommand = False
+        # if GlobalValue.IS_DEBUG:
+        #     self.menuDebug.add_separator()                        #添加分割线
+        #     self.menuDebug.add_command(label="测试报错",command=self.menuTestShowError)
+        #     self.menuDebug.add_command(label="测试双击小图标",command=self.onSysTrayLDoubleClick)
 
         self.menuHelp = Menu(self.mbar, tearoff=False)             #在顶级菜单下创建菜单项
         self.mbar.add_cascade(label=' 帮助 ',menu=self.menuHelp) #添加子菜单
@@ -459,6 +464,8 @@ class MainGui(Frame):
             window_class_name=PROGRAM_NAME,
             )
 
+        self.refreshMainViewDebug()
+
         self.tkThemeHelper.update()
 
         self.updateTlNode()
@@ -480,6 +487,30 @@ class MainGui(Frame):
     def removeAllEventListen(self):
         removeTlEventListener(self.tlEventHandle)
         self.tlEventHandle = list()
+
+    def refreshMainViewDebug(self):
+        self.isOpenDebugVar.set(1 if GlobalValue.IS_DEBUG else 0)
+        if GlobalValue.IS_DEBUG:
+            # 快捷键
+            # if True:
+            #     self.initWindow.bind('<Control-t>', lambda e:self.test())
+
+            # 菜单
+            if True and not self.isMenuDebugAddDebugCommand:
+                self.isMenuDebugAddDebugCommand = True
+                self.menuDebug.add_separator()                        #添加分割线
+                self.menuDebug.add_command(label="测试报错",command=self.menuTestShowError)
+                self.menuDebug.add_command(label="测试双击小图标",command=self.onSysTrayLDoubleClick)
+        else:
+            # 快捷键
+            # if True:
+            #     self.initWindow.unbind('<Control-t>')
+
+            # 菜单
+            if True and self.isMenuDebugAddDebugCommand:
+                self.isMenuDebugAddDebugCommand = False
+                sIndex = self.menuDebug.index('end') - 2
+                self.menuDebug.delete(sIndex, 'end')
 
 
 
@@ -535,6 +566,7 @@ class MainGui(Frame):
         showTlInitErrorMsg()
         # self.refreshColors()
         self.refreshOptions()
+        self.refreshMainViewDebug()
         self.updateTlNode()
 
     # 设置
@@ -610,6 +642,13 @@ ctrl+tab：切换模式
         envDict = dict(env)
         content = json.dumps(envDict, ensure_ascii=False, indent=2, sort_keys=True)
         return content
+
+    # 开启Debug
+    def menuOpenDebug(self):
+        GlobalValue.IS_DEBUG = self.isOpenDebugVar.get() > 0
+        saveProjectSetting()
+        refreshDebugMode()
+        self.refreshMainViewDebug()
 
     # 格式化节点配置文件内路径
     def menuFormatNodesConfigPaths(self):

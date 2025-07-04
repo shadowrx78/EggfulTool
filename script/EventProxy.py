@@ -49,6 +49,9 @@ class EventProxy(object):
 
     def getClassName(self):
         return self.__class__.__name__
+
+    def setIsDebug(self, isDebug):
+        self.isDebug = isDebug
         
     # 添加事件监听
     def addEventListener(self, eventType, fCallback):
