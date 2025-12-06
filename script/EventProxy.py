@@ -10,6 +10,7 @@ class EventType:
     Event_SettingColorChange = 'Event_SettingColorChange'
     Event_SettingOptionsChange = 'Event_SettingOptionsChange'
     Event_SettingViewShowPosSettingConfirm = 'Event_SettingViewShowPosSettingConfirm'
+    Event_SettingTlCommonStringChange = 'Event_SettingTlCommonStringChange'
 
     Event_ViewShow = 'Event_ViewShow'
     Event_ViewClose = 'Event_ViewClose'

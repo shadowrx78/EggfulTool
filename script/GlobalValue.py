@@ -32,6 +32,7 @@ from . import tkVirtualListHelper
 from . import py3_common
 from ctypes import windll
 import pyperclip
+from . import partial_compress_json
 
 # from . import EventProxy
 from .EventProxy import *
@@ -125,7 +126,7 @@ TM_BTN_TYPE_COLOR_DEFAULT = {
     'exe':{'typeBgColor':'yellow', 'typeTextColor':'black'},
     'cmd':{'typeBgColor':'gray38', 'typeTextColor':'white'},
     'create':{'bgColor':'gray87', 'fgColor':'blue'},
-    'sheet':{'theme':'light blue', 'highlightBgColor':'#d6effe', 'highlightFgColor':'black', 'highlightBgColor2':'#fefed6', 'highlightFgColor2':'black'}
+    'sheet':{'theme':'light blue', 'highlightBgColor':'#d6effe', 'highlightFgColor':'black', 'highlightBgColor2':'#fefed6', 'highlightFgColor2':'black', 'highlightBgColor3':'#fee4d6', 'highlightFgColor3':'black'}
 }
 # 白色风格默认颜色
 TM_BTN_TYPE_COLOR = py3_common.deep_copy_dict(TM_BTN_TYPE_COLOR_DEFAULT)
@@ -154,7 +155,7 @@ TM_BTN_TYPE_COLOR_BLACK = {
     "exe":{"typeBgColor":"#369645", "typeTextColor":"#e7e7e7"},
     "cmd":{"typeBgColor":"#b45227", "typeTextColor":"#e7e7e7"},
     "create":{"fgColor":"#009d00", "bgColor":"#303030"},
-    'sheet':{'theme':'black', 'highlightBgColor':'#d56a00', 'highlightFgColor':'black', 'highlightBgColor2':'#a8a8ff', 'highlightFgColor2':'black'}
+    'sheet':{'theme':'black', 'highlightBgColor':'#d56a00', 'highlightFgColor':'black', 'highlightBgColor2':'#a8a8ff', 'highlightFgColor2':'black', 'highlightBgColor3':'#73a343', 'highlightFgColor3':'black'}
 }
 
 # 默认风格dict
@@ -175,12 +176,20 @@ WINDOW_ALPHA = 100
 NOW_SELECT_INDEX = None
 # 强制显示当前选中
 FORCE_SHOW_SELECT = False
-# 方向类型
+# 方向&翻页类型
 class ArrowDirEnum:
     Up = 0
     Down = 1
     Left = 2
     Right = 3
+    PageUp = 4
+    PageDown = 5
+    Home = 6
+    End = 7
+    ShiftPageUp = 8
+    ShiftPageDown = 9
+    ShiftHome = 10
+    ShiftEnd = 11
 
 # 界面位置类型
 class ViewPosEnum:
@@ -237,6 +246,8 @@ DELETED_NODES_BACKUP_JSON_PATH = './deletedNodes.json'
 JSON_BACKUP_DIR = './backup'
 # 出错配置备份路径
 JSON_ERROR_BACKUP_DIR = os.path.join(JSON_BACKUP_DIR, 'error')
+# 常用文本配置文件路径
+COMMON_STRINGS_JSON_PATH = './commonStrings.json'
 # 记录初始化错误信息
 TL_INIT_ERROR_MSG = list()
 # 全局 执行前询问
@@ -259,7 +270,8 @@ if True:
 TM_DEFAULT_VIEW_POS = {
     'MainGui': ViewPosEnum.Center,
     'ViewListLineNode': ViewPosEnum.Right,
-    'ViewNodeSetting': ViewPosEnum.Center
+    'ViewNodeSetting': ViewPosEnum.Center,
+    'ViewLineCopyString': ViewPosEnum.Center
 }
 # 各界面位置
 TM_VIEW_POS = None
@@ -289,6 +301,10 @@ SEARCH_VIEW_NO_IGNORECASE = False
 VIEW_STACK = None
 # 需要锁定焦点的界面栈，用于多级弹窗锁定焦点
 VIEW_NEED_GRAB_STACK = None
+# 常用文本
+TL_COMMON_STRING = list()
+# 列表选择复制文本界面区分大小写
+VIEW_LINE_COPY_NO_IGNORECASE = False
 
 
 
@@ -609,8 +625,15 @@ def refreshProjectSetting():
 
 # 保存项目设置
 def saveProjectSetting(print_dump_path=True):
-    jList = getTmSettingData()
-    py3_common.dumpJsonFromList(SETTING_CONFIG_JSON_PATH, jList, 2, print_dump_path=print_dump_path)
+    jList = py3_common.deep_copy_dict(getTmSettingData())
+    tlCompressKey = list()
+    if 'tmSettingColor' in jList and bool(jList['tmSettingColor']):
+        tlCompressKey.append('tmSettingColor')
+    if len(tlCompressKey) > 0:
+        result = partial_compress_json.custom_dumps(jList, "", tlCompressKey, indent=2)
+        py3_common.dumpToFile(SETTING_CONFIG_JSON_PATH, result, encoding='utf-8', ignoreLog=not print_dump_path)
+    else:
+        py3_common.dumpJsonFromList(SETTING_CONFIG_JSON_PATH, jList, 2, print_dump_path=print_dump_path)
 
 
 # 获取当前设置
@@ -656,7 +679,7 @@ def getViewPosEnum(className, exTmViewPos=None):
 # 根据界面位置枚举获取界面位置锚点
 def getViewPosAnchorWithViewPosEnum(viewPosEnum):
     if viewPosEnum == None or not viewPosEnum in TM_DEFAULT_VIEW_POS_ANCHOR:
-        return None
+        return py3_common.deep_copy_dict(TM_DEFAULT_VIEW_POS_ANCHOR[ViewPosEnum.Center])
     return py3_common.deep_copy_dict(TM_DEFAULT_VIEW_POS_ANCHOR[viewPosEnum])
 
 # 获取界面位置锚点
@@ -803,6 +826,43 @@ def getStandardNodeData(nodeData):
         py3_common.Logging.error(e)
 
     return tempData
+
+
+# 刷新常用文本
+def refreshTlCommonString():
+    if os.path.isfile(COMMON_STRINGS_JSON_PATH):
+        jList = py3_common.loadJsonToList(COMMON_STRINGS_JSON_PATH)
+        if jList == None or not isinstance(jList, list):
+            # jList = list()
+            backupFilePath = backupFileOrDir(COMMON_STRINGS_JSON_PATH, JSON_ERROR_BACKUP_DIR)
+            errStr = '读取常用文本配置失败，已备份至"%s"' % backupFilePath
+            # messagebox.showerror('错误', errStr)
+            global TL_INIT_ERROR_MSG
+            TL_INIT_ERROR_MSG.append(errStr)
+        else:
+            # 刷新常用文本
+            global TL_COMMON_STRING
+            TL_COMMON_STRING = jList
+    # else:
+    #     py3_common.Logging.info(u'没有找到设置配置json，初始化')
+    #     IS_DEBUG = False
+    #     if len(TL_BASE_INFO_EX) == 0:
+    #         TL_BASE_INFO_EX = py3_common.deep_copy_dict(TL_BASE_INFO_EX_DEFAULT)
+    #     if len(TL_SINGLE_INFO_EX) == 0:
+    #         TL_SINGLE_INFO_EX = py3_common.deep_copy_dict(TL_SINGLE_INFO_EX_DEFAULT)
+    #     if len(TL_CUSTOM_WEB_JUMP_EX) == 0:
+    #         TL_CUSTOM_WEB_JUMP_EX = py3_common.deep_copy_dict(TL_CUSTOM_WEB_JUMP_EX_DEFAULT)
+    #     if not bool(TM_SPECIAL_MARK):
+    #         TM_SPECIAL_MARK = py3_common.deep_copy_dict(TM_SPECIAL_MARK_EX_DEFAULT)
+    #     if not bool(TM_WEB_JUMP_DEFAULT_LINK):
+    #         TM_WEB_JUMP_DEFAULT_LINK = py3_common.deep_copy_dict(TM_WEB_JUMP_DEFAULT_LINK_DEFAULT)
+    #     saveProjectSetting()
+
+# 保存项目设置
+def saveTlCommonString(print_dump_path=True):
+    jList = TL_COMMON_STRING
+    py3_common.dumpJsonFromList(COMMON_STRINGS_JSON_PATH, jList, 2, print_dump_path=print_dump_path)
+
 
 # 创建颜色配置json
 def createSettingConfigJson():
@@ -1034,6 +1094,117 @@ def setInitWindowAlpha(alpha=None):
 
 
 
+# 焦点不在表格中时键盘方向键事件响应
+# 翻页位移存在误差
+def onKeyboardArrowClickInViewWithTkSheet(view, sheet, arrow, showDebugInfo=True, classNameObj=None):
+    if classNameObj == None:
+        classNameObj = view
+    if showDebugInfo and hasattr(classNameObj, 'getClassName'):
+        py3_common.Logging.debug(classNameObj.getClassName(),'onKeyboardArrowClickInViewWithTkSheet', arrow)
+    r,c = sheet.get_currently_selected_rc()
+    isNeedSelect = False
+    isForceJump = False
+    rn, cn = 0, 0
+    if r == None or c == None:
+        rAmount, cAmount = sheet.get_row_col_amount()
+        if rAmount > 0 and cAmount > 0:
+            rn, cn = 0, 0
+            if arrow == ArrowDirEnum.Up or arrow == ArrowDirEnum.End:
+                rn = rAmount-1
+            elif arrow == ArrowDirEnum.Left or arrow == ArrowDirEnum.ShiftEnd:
+                cn = cAmount-1
+            elif arrow == ArrowDirEnum.PageUp:
+                rn = sheet.get_page_up_down_r(shift=-1)
+                isForceJump = True
+            elif arrow == ArrowDirEnum.PageDown:
+                rn = sheet.get_page_up_down_r(shift=1)
+                isForceJump = True
+            elif arrow == ArrowDirEnum.ShiftPageUp:
+                cn = sheet.get_page_up_down_c(shift=-1)
+                isForceJump = True
+            elif arrow == ArrowDirEnum.ShiftPageDown:
+                cn = sheet.get_page_up_down_c(shift=1)
+                isForceJump = True
+            isNeedSelect = True
+    else:
+        focused = view.focus_get()
+        rAmount, cAmount = sheet.get_row_col_amount()
+        rn, cn = r, c
+        if (arrow == ArrowDirEnum.Home
+            or arrow == ArrowDirEnum.End
+            or arrow == ArrowDirEnum.PageUp
+            or arrow == ArrowDirEnum.PageDown
+            or arrow == ArrowDirEnum.ShiftHome
+            or arrow == ArrowDirEnum.ShiftEnd
+            or arrow == ArrowDirEnum.ShiftPageUp
+            or arrow == ArrowDirEnum.ShiftPageDown):
+            if arrow == ArrowDirEnum.Home:
+                rn = 0
+            elif arrow == ArrowDirEnum.End:
+                rn = rAmount-1
+            elif arrow == ArrowDirEnum.PageUp:
+                rn = sheet.get_page_up_down_r(shift=-1)
+                isForceJump = True
+            elif arrow == ArrowDirEnum.PageDown:
+                rn = sheet.get_page_up_down_r(shift=1)
+                isForceJump = True
+            elif arrow == ArrowDirEnum.ShiftHome:
+                cn = 0
+            elif arrow == ArrowDirEnum.ShiftEnd:
+                cn = cAmount-1
+            elif arrow == ArrowDirEnum.ShiftPageUp:
+                cn = sheet.get_page_up_down_c(shift=-1)
+                isForceJump = True
+            elif arrow == ArrowDirEnum.ShiftPageDown:
+                cn = sheet.get_page_up_down_c(shift=1)
+                isForceJump = True
+            isNeedSelect = True
+        elif focused != sheet and focused != sheet.MT:
+            if arrow == ArrowDirEnum.Up:
+                rn = max(r-1, 0)
+            elif arrow == ArrowDirEnum.Down:
+                rn = min(r+1, rAmount-1)
+            elif arrow == ArrowDirEnum.Left:
+                cn = max(c-1, 0)
+            elif arrow == ArrowDirEnum.Right:
+                cn = min(c+1, cAmount-1)
+            isNeedSelect = True
+
+    if isNeedSelect:
+        if not sheet.is_rc_completely_visible(rn, cn) or isForceJump:
+            sheet.select_cell(rn, cn, redraw=False)
+            keepXscroll = sheet.is_c_completely_visible(cn)
+            sheet.MT.see(rn, cn, keep_xscroll=keepXscroll, check_cell_visibility=False)
+        else:
+            sheet.select_cell(rn, cn, redraw=True)
+        view.after(1, lambda: sheet.MT.focus_set())
+
+
+# 绑定通用表格方向键事件
+def bindTkSheetKeyboardArrowEvent(view, sheet, classNameObj=None):
+    view.bind('<Up>', lambda e,v=view,s=sheet,c=classNameObj,arrow=ArrowDirEnum.Up:onKeyboardArrowClickInViewWithTkSheet(v,s,arrow,classNameObj=c))
+    view.bind('<Left>', lambda e,v=view,s=sheet,c=classNameObj,arrow=ArrowDirEnum.Left:onKeyboardArrowClickInViewWithTkSheet(v,s,arrow,classNameObj=c))
+    view.bind('<Down>', lambda e,v=view,s=sheet,c=classNameObj,arrow=ArrowDirEnum.Down:onKeyboardArrowClickInViewWithTkSheet(v,s,arrow,classNameObj=c))
+    view.bind('<Right>', lambda e,v=view,s=sheet,c=classNameObj,arrow=ArrowDirEnum.Right:onKeyboardArrowClickInViewWithTkSheet(v,s,arrow,classNameObj=c))
+    view.bind('<Home>', lambda e,v=view,s=sheet,c=classNameObj,arrow=ArrowDirEnum.Home:onKeyboardArrowClickInViewWithTkSheet(v,s,arrow,classNameObj=c))
+    view.bind('<End>', lambda e,v=view,s=sheet,c=classNameObj,arrow=ArrowDirEnum.End:onKeyboardArrowClickInViewWithTkSheet(v,s,arrow,classNameObj=c))
+    view.bind('<Prior>', lambda e,v=view,s=sheet,c=classNameObj,arrow=ArrowDirEnum.PageUp:onKeyboardArrowClickInViewWithTkSheet(v,s,arrow,classNameObj=c))
+    view.bind('<Next>', lambda e,v=view,s=sheet,c=classNameObj,arrow=ArrowDirEnum.PageDown:onKeyboardArrowClickInViewWithTkSheet(v,s,arrow,classNameObj=c))
+    view.bind('<Shift-Home>', lambda e,v=view,s=sheet,c=classNameObj,arrow=ArrowDirEnum.ShiftHome:onKeyboardArrowClickInViewWithTkSheet(v,s,arrow,classNameObj=c))
+    view.bind('<Shift-End>', lambda e,v=view,s=sheet,c=classNameObj,arrow=ArrowDirEnum.ShiftEnd:onKeyboardArrowClickInViewWithTkSheet(v,s,arrow,classNameObj=c))
+    view.bind('<Shift-Prior>', lambda e,v=view,s=sheet,c=classNameObj,arrow=ArrowDirEnum.ShiftPageUp:onKeyboardArrowClickInViewWithTkSheet(v,s,arrow,classNameObj=c))
+    view.bind('<Shift-Next>', lambda e,v=view,s=sheet,c=classNameObj,arrow=ArrowDirEnum.ShiftPageDown:onKeyboardArrowClickInViewWithTkSheet(v,s,arrow,classNameObj=c))
+    sheet.bind('<Home>', lambda e:True)
+    sheet.bind('<End>', lambda e:True)
+    sheet.bind('<Prior>', lambda e:True)    #PageUp
+    sheet.bind('<Next>', lambda e:True)     #PageDown
+    sheet.bind('<Shift-Home>', lambda e:True)
+    sheet.bind('<Shift-End>', lambda e:True)
+    sheet.bind('<Shift-Prior>', lambda e:True)    #PageUp
+    sheet.bind('<Shift-Next>', lambda e:True)     #PageDown
+
+
+
 ########选项
 # 初始化执行前提示
 def initOptionAskBeforeExecuting(initValue=False):
@@ -1127,6 +1298,7 @@ def dispatchEvent(eventType, *args):
 initEventProxy()
 initNodesConfig()
 refreshProjectSetting()
+refreshTlCommonString()
 
 
 # 初始化json
@@ -1243,9 +1415,18 @@ initViewNeedGrabEventListen()
 ########其他事件相关
 def initViewOtherEventListen():
     addEventListener(EventType.Event_SettingColorChange, onEvent_SettingColorChange)
+    addEventListener(EventType.Event_SettingTlCommonStringChange, onEvent_SettingTlCommonStringChange)
 
 # 风格改变
 def onEvent_SettingColorChange():
     configureTtkStyle()
+
+# 常用文本改变
+def onEvent_SettingTlCommonStringChange(tlData, *args):
+    if tlData == None or not isinstance(tlData, list):
+        return
+    global TL_COMMON_STRING
+    TL_COMMON_STRING = tlData
+    saveTlCommonString()
 
 initViewOtherEventListen()

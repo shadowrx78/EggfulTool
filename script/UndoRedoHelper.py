@@ -74,11 +74,14 @@ class UndoRedoHelper(object):
     nowData:dict|list 当前数据，函数会直接修改这个数据
     isTest:bool 为True时不改变记录指针，用于不改变记录获取前一步数据
     noDispatch:bool 为True时不抛出事件
+    returnRecordData:bool 为True时同时返回记录数据
     返回:
     suc:bool 操作是否成功
     """
-    def undo(self, nowData, isTest=False, noDispatch=False):
+    def undo(self, nowData, isTest=False, noDispatch=False, returnRecordData=False):
         if self.recordPointer < 0 or len(self.tlOperRecord) == 0:
+            if returnRecordData:
+                return False, None
             return False
         try:
             recordData = py3_common.deep_copy_dict(self.tlOperRecord[self.recordPointer])
@@ -97,10 +100,14 @@ class UndoRedoHelper(object):
             if not isTest and not noDispatch:
                 dispatchEvent(EventType.Event_UndoRedoHelperUndo, self.uid)
                 dispatchEvent(EventType.Event_UndoRedoHelperDataChange, self.uid)
+            if returnRecordData:
+                return True, recordData
             return True
         except Exception as e:
             # raise e
             py3_common.Logging.error(e, isShowMessageBox=False)
+            if returnRecordData:
+                return False, None
             return False
 
     """
@@ -108,11 +115,15 @@ class UndoRedoHelper(object):
     参数:
     nowData:dict|list 当前数据，函数会直接修改这个数据
     isTest:bool 为True时不改变记录指针，用于不改变记录获取后一步数据
+    noDispatch:bool 为True时不抛出事件
+    returnRecordData:bool 为True时同时返回记录数据
     返回:
     suc:bool 操作是否成功
     """
-    def redo(self, nowData, isTest=False, noDispatch=False):
+    def redo(self, nowData, isTest=False, noDispatch=False, returnRecordData=False):
         if self.recordPointer >= len(self.tlOperRecord)-1 or len(self.tlOperRecord) == 0:
+            if returnRecordData:
+                return False, None
             return False
         try:
             recordData = py3_common.deep_copy_dict(self.tlOperRecord[self.recordPointer+1])
@@ -131,10 +142,14 @@ class UndoRedoHelper(object):
             if not isTest and not noDispatch:
                 dispatchEvent(EventType.Event_UndoRedoHelperRedo, self.uid)
                 dispatchEvent(EventType.Event_UndoRedoHelperDataChange, self.uid)
+            if returnRecordData:
+                return True, recordData
             return True
         except Exception as e:
             # raise e
             py3_common.Logging.error(e, isShowMessageBox=False)
+            if returnRecordData:
+                return False, None
             return False
 
     # 清除所有记录

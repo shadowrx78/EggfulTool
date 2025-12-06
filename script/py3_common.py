@@ -273,6 +273,12 @@ def delete_all_file_in_folder(src):
         delete_file_folder(path)
 
 
+def is_dir_empty(src):
+    if not os.listdir(src):
+        return True
+    return False
+
+
 # 同步文件
 # src_relpath_base src的相对根目录
 # des_relpath_base 同步的目标根目录
@@ -355,6 +361,9 @@ def dumpJsonFromList(path, config_List, indent=None, sort_keys=False, print_dump
         content = json.dumps(config_List, ensure_ascii=False, indent=indent, sort_keys=sort_keys)
         try:
             _config.write(content.encode('utf-8'))
+        except Exception as e:
+            # raise e
+            messageboxShowerrorWithTraceback('错误','写入json失败')
         finally:
             _config.close()
         if print_dump_path:
@@ -1500,12 +1509,17 @@ def messageboxShowerror(title, errStr, parent=None):
     # Logging.info('isSkip:%s' % isSkip)
     if not isSkip:
         if parent != None:
-            messagebox.showerror('错误', errStr, parent=parent)
+            messagebox.showerror(title, errStr, parent=parent)
         else:
-            messagebox.showerror('错误', errStr)
+            messagebox.showerror(title, errStr)
 
 
 def messageboxShowerror2(title, errStr, isLoggingError=False, *args, **kwargs):
     if isLoggingError:
         Logging.error(errStr, isShowMessageBox=False)
-    messagebox.showerror('错误', errStr, *args, **kwargs)
+    messagebox.showerror(title, errStr, *args, **kwargs)
+
+def messageboxShowerrorWithTraceback(title, errStr, *args, **kwargs):
+    tbErrStr = traceback.format_exc()
+    Logging.error_(errStr + '\n' + tbErrStr)
+    messagebox.showerror(title, errStr + '\n' + tbErrStr, *args, **kwargs)

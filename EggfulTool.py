@@ -49,6 +49,8 @@ from script.node.CreateNode import *
 from script.view.ViewListLineNode import *
 from script.view.ViewNodeSetting import *
 from script.view.ViewRootSetting import *
+from script.view.ViewLineCopyString import ViewLineCopyString
+from script.view.ViewAddCommonString import ViewAddCommonString
 
 # import win32ui
 # import win32gui
@@ -58,7 +60,7 @@ from script.view.ViewRootSetting import *
 
 PROGRAM_TITLE_NAME = '有点卵用工具'
 PROGRAM_NAME = 'EggfulTool'
-PROGRAM_VERSION = '1.0.8α2'
+PROGRAM_VERSION = '1.0.8α3'
 
 TL_UI_MODE_DATA = [
     {'name':'通常', 'key':UiModeEnum.Normal},
@@ -256,6 +258,9 @@ class MainGui(Frame):
         self.tkThemeHelper.addTkObj(self.menuEdit)
         self.menuEdit.add_command(label="撤销",command=lambda e=None:self.onKeyboardCtrlZClick(e),accelerator='Ctrl+Z')
         self.menuEdit.add_command(label="重做",command=lambda e=None:self.onKeyboardCtrlYClick(e),accelerator='Ctrl+Y')
+        self.menuEdit.add_separator()                        #添加分割线
+        self.menuEdit.add_command(label="复制常用文本",command=lambda e=None:self.menuOpenViewCopyCommonString(),accelerator='F12')
+        self.menuEdit.add_command(label="添加常用文本",command=lambda e=None:self.menuOpenViewAddCommonString(),accelerator='Ctrl+Alt+Shift+F12')
 
         self.menuOptions = Menu(self.mbar, tearoff=False)             #在顶级菜单下创建菜单项
         self.mbar.add_cascade(label=' 选项 ',menu=self.menuOptions) #添加子菜单
@@ -325,8 +330,11 @@ class MainGui(Frame):
         self.initWindow.bind('<Control-Alt-Shift-S>', lambda e:self.menuExportSetting())
         self.initWindow.bind('<F5>', lambda e:self.menuRefresh())
 
+        self.initWindow.bind_all('<F12>', lambda e:self.menuOpenViewCopyCommonString())
+        self.initWindow.bind_all('<Control-Alt-Shift-F12>', lambda e:self.menuOpenViewAddCommonString())
+
         self.isHideTitleBar = False
-        self.initWindow.bind('<F11>', lambda e:self.switchHideTitleBar())
+        # self.initWindow.bind('<F11>', lambda e:self.switchHideTitleBar())
 
         # 鼠标在界面内无点击移动事件
         self.initWindow.bind('<Motion>', self.onRootMotion)
@@ -708,6 +716,22 @@ ctrl+tab：切换模式
             self.sysTrayIcon.destroy()
         # 粗暴杀进程
         os._exit(0)
+
+    # 复制常用文本
+    def menuOpenViewCopyCommonString(self):
+        parent = self
+        if VIEW_STACK != None and len(VIEW_STACK) > 0:
+            parent = VIEW_STACK[-1]
+        editor = None
+        try:
+            editor = parent.focus_get()
+        except Exception as e:
+            raise e
+        view = ViewLineCopyString(parent, GlobalValue.TL_COMMON_STRING, editor=editor)
+
+    # 添加常用文本
+    def menuOpenViewAddCommonString(self):
+        view = ViewAddCommonString(self)
 
 
 
