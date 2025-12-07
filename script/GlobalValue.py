@@ -271,7 +271,7 @@ TM_DEFAULT_VIEW_POS = {
     'MainGui': ViewPosEnum.Center,
     'ViewListLineNode': ViewPosEnum.Right,
     'ViewNodeSetting': ViewPosEnum.Center,
-    'ViewLineCopyString': ViewPosEnum.Center
+    'ViewLineCopyCommonString': ViewPosEnum.Center
 }
 # 各界面位置
 TM_VIEW_POS = None
@@ -302,7 +302,7 @@ VIEW_STACK = None
 # 需要锁定焦点的界面栈，用于多级弹窗锁定焦点
 VIEW_NEED_GRAB_STACK = None
 # 常用文本
-TL_COMMON_STRING = list()
+TLTM_COMMON_STRING = list()
 # 列表选择复制文本界面区分大小写
 VIEW_LINE_COPY_NO_IGNORECASE = False
 
@@ -841,27 +841,33 @@ def refreshTlCommonString():
             TL_INIT_ERROR_MSG.append(errStr)
         else:
             # 刷新常用文本
-            global TL_COMMON_STRING
-            TL_COMMON_STRING = jList
-    # else:
-    #     py3_common.Logging.info(u'没有找到设置配置json，初始化')
-    #     IS_DEBUG = False
-    #     if len(TL_BASE_INFO_EX) == 0:
-    #         TL_BASE_INFO_EX = py3_common.deep_copy_dict(TL_BASE_INFO_EX_DEFAULT)
-    #     if len(TL_SINGLE_INFO_EX) == 0:
-    #         TL_SINGLE_INFO_EX = py3_common.deep_copy_dict(TL_SINGLE_INFO_EX_DEFAULT)
-    #     if len(TL_CUSTOM_WEB_JUMP_EX) == 0:
-    #         TL_CUSTOM_WEB_JUMP_EX = py3_common.deep_copy_dict(TL_CUSTOM_WEB_JUMP_EX_DEFAULT)
-    #     if not bool(TM_SPECIAL_MARK):
-    #         TM_SPECIAL_MARK = py3_common.deep_copy_dict(TM_SPECIAL_MARK_EX_DEFAULT)
-    #     if not bool(TM_WEB_JUMP_DEFAULT_LINK):
-    #         TM_WEB_JUMP_DEFAULT_LINK = py3_common.deep_copy_dict(TM_WEB_JUMP_DEFAULT_LINK_DEFAULT)
-    #     saveProjectSetting()
+            global TLTM_COMMON_STRING
+            TLTM_COMMON_STRING = jList
+    else:
+        if TLTM_COMMON_STRING and len(TLTM_COMMON_STRING) > 0:
+            py3_common.Logging.info(u'没有找到常用文本配置json，初始化')
+            TLTM_COMMON_STRING = list()
+        # IS_DEBUG = False
+        # if len(TL_BASE_INFO_EX) == 0:
+        #     TL_BASE_INFO_EX = py3_common.deep_copy_dict(TL_BASE_INFO_EX_DEFAULT)
+        # if len(TL_SINGLE_INFO_EX) == 0:
+        #     TL_SINGLE_INFO_EX = py3_common.deep_copy_dict(TL_SINGLE_INFO_EX_DEFAULT)
+        # if len(TL_CUSTOM_WEB_JUMP_EX) == 0:
+        #     TL_CUSTOM_WEB_JUMP_EX = py3_common.deep_copy_dict(TL_CUSTOM_WEB_JUMP_EX_DEFAULT)
+        # if not bool(TM_SPECIAL_MARK):
+        #     TM_SPECIAL_MARK = py3_common.deep_copy_dict(TM_SPECIAL_MARK_EX_DEFAULT)
+        # if not bool(TM_WEB_JUMP_DEFAULT_LINK):
+        #     TM_WEB_JUMP_DEFAULT_LINK = py3_common.deep_copy_dict(TM_WEB_JUMP_DEFAULT_LINK_DEFAULT)
+        # saveProjectSetting()
 
-# 保存项目设置
+# 保存常用文本
 def saveTlCommonString(print_dump_path=True):
-    jList = TL_COMMON_STRING
-    py3_common.dumpJsonFromList(COMMON_STRINGS_JSON_PATH, jList, 2, print_dump_path=print_dump_path)
+    jList = TLTM_COMMON_STRING
+    if len(jList) > 0:
+        result = partial_compress_json.custom_dumps(jList, "", [], indent=2)
+        py3_common.dumpToFile(COMMON_STRINGS_JSON_PATH, result, encoding='utf-8', ignoreLog=not print_dump_path)
+    else:
+        py3_common.dumpJsonFromList(COMMON_STRINGS_JSON_PATH, jList, 2, print_dump_path=print_dump_path)
 
 
 # 创建颜色配置json
@@ -1425,8 +1431,8 @@ def onEvent_SettingColorChange():
 def onEvent_SettingTlCommonStringChange(tlData, *args):
     if tlData == None or not isinstance(tlData, list):
         return
-    global TL_COMMON_STRING
-    TL_COMMON_STRING = tlData
+    global TLTM_COMMON_STRING
+    TLTM_COMMON_STRING = tlData
     saveTlCommonString()
 
 initViewOtherEventListen()

@@ -34,7 +34,7 @@ from ..UndoRedoHelper import *
 from .BaseView import *
 from lib.tksheet import *
 from .ViewText import ViewText, ViewTextTypeEnum
-from .ViewLineCopyString import *
+from .ViewLineCopyCommonString import *
 
 
 # 添加常用文本界面
@@ -49,8 +49,9 @@ class ViewAddCommonString(BaseView):
             return
         super(ViewAddCommonString, self).__init__(initWindow)
         self.initWindow = initWindow
-        self.tlData = GlobalValue.TL_COMMON_STRING
+        self.tlData = GlobalValue.TLTM_COMMON_STRING
         self.tlNowData = py3_common.deep_copy_dict(self.tlData)  #复制一份做当前数据缓存，所有修改都改这份
+        self.tlColKey = ['value', 'remark']
 
         self.tlKey = []
         self.undoRedoHelper = UndoRedoHelper()
@@ -232,19 +233,27 @@ class ViewAddCommonString(BaseView):
     # 刷新界面
     def updateView(self):
         tlNowData = self.tlNowData
-        tlTitle = ['值']     #列标题
+        tlTitle = ['值', '备注']     #列标题
+        tlColKey = self.tlColKey
         tlRowIndex = list()     #行标题
         tlTlData = list()       #表格每行数据
         if len(tlNowData) > 0:
             for i in range(0,len(tlNowData)):
-                tlTlData.append([tlNowData[i]])
+                tmCommonStringData = tlNowData[i]
+                tlTempData = list()
+                for j in range(0,len(tlColKey)):
+                    key = tlColKey[j]
+                    tlTempData.append(tmCommonStringData[key] if key in tmCommonStringData else '')
+                tlTlData.append(tlTempData)
                 tlRowIndex.append(str(i+1))
         py3_common.setDataToTkSheet(self.sheet, tlTitle=tlTitle, tlRowIndex=tlRowIndex, tlTlData=tlTlData)
 
         self.tlTlData = tlTlData
 
         self.sheet.fix_select_row_col()
-        if len(tlTlData) > 0:
+        if len(tlTlData) > 1:
+            self.sheet.set_col_width(1)
+        elif len(tlTlData) > 0:
             self.sheet.set_col_width(0)
 
 
@@ -428,16 +437,17 @@ class ViewAddCommonString(BaseView):
         r,c,rcSuc = py3_common.tkSheetGetSelectedRCHelper(sheet, isShowMessageBox=True, messageboxParent=self)
         if not rcSuc:
             return
-        self.showEditViewText(r)
+        self.showEditViewText(r,c)
 
     # 搜索
     def onBtnSearchClick(self):
         py3_common.Logging.debug(self.getClassName(),'onBtnSearchClick')
-        tlStr = list()
-        tlTlData = self.tlTlData
-        for i in range(0,len(tlTlData)):
-            tlStr.append(tlTlData[i][0])
-        view = ViewLineCopyString(self, tlStr, fCallback=self.onSearchStrCallback, isCopyStr=False)
+        # tlStr = list()
+        # tlTlData = self.tlTlData
+        # for i in range(0,len(tlTlData)):
+        #     tlStr.append(tlTlData[i][0])
+        tlTmCommonString = py3_common.deep_copy_dict(self.tlNowData)
+        view = ViewLineCopyCommonString(self, tlTmCommonString, fCallback=self.onSearchStrCallback, isCopyStr=False, title='搜索常用文本')
 
     # 确定修改
     def onBtnConfirm(self, isCloseView=True):
@@ -463,32 +473,41 @@ class ViewAddCommonString(BaseView):
             self.close()
 
     # 弹文本输入框界面
-    def showEditViewText(self, index):
+    def showEditViewText(self, index, col=0):
         py3_common.Logging.debug(self.getClassName(),'showEditViewText')
         tlNowData = self.tlNowData
         try:
             title = '输入文本'
-            textStr = tlNowData[index] if index >= 0 and index < len(tlNowData) else ''
+            # textStr = tlNowData[index] if index >= 0 and index < len(tlNowData) else ''
+            textStr = ''
+            try:
+                key = self.tlColKey[col]
+                textStrTemp, suc = py3_common.getValueWithTlKey(tlNowData, [index, key])
+                if suc:
+                    textStr = textStrTemp
+            except Exception as e:
+                # raise e
+                pass
 
             tlCustomBtnData = [
                 {
                     'text': '确定',
-                    'command': lambda v, i=index:self.onEditConfirm(v, i),
+                    'command': lambda v, i=index, c=col:self.onEditConfirm(v, i, c),
                     'bindKey':'<Control-Return>',
                 },
                 {
                     'text': '取消',
-                    'command': lambda v, i=index:self.onEditEscape(v, i),
+                    'command': lambda v, i=index, c=col:self.onEditEscape(v, i, c),
                 },
             ]
             tlBind = [
                 {
                     'bindKey':'<Escape>',
-                    'fCallback':lambda v, i=index:self.onEditEscape(v, i),
+                    'fCallback':lambda v, i=index, c=col:self.onEditEscape(v, i, c),
                 },
                 {
                     'bindKey':'WM_DELETE_WINDOW',
-                    'fCallback':lambda v, i=index:self.onEditEscape(v, i),
+                    'fCallback':lambda v, i=index, c=col:self.onEditEscape(v, i, c),
                 },
             ]
 
@@ -500,25 +519,50 @@ class ViewAddCommonString(BaseView):
             raise e
 
     # 确定修改
-    def onEditConfirm(self, view, index):
+    def onEditConfirm(self, view, index, col=0):
         py3_common.Logging.debug(self.getClassName(),'onEditConfirm')
         textStr = view.getTextStr()
         try:
-            if py3_common.is_str_empty(textStr):
-                py3_common.messageboxShowerror2('错误','请输入文本',parent=view)
-                return
+            tempData, suc = py3_common.getValueWithTlKey(self.tlNowData, [index])
+            tempData = py3_common.deep_copy_dict(tempData) if suc else dict()
+            isDel = False
+            if col == 1:
+                if py3_common.is_str_empty(textStr):
+                    isDel = True
+            else:
+                if py3_common.is_str_empty(textStr):
+                    py3_common.messageboxShowerror2('错误','请输入文本',parent=view)
+                    return
+
             view.close()
-            self._setData([index], textStr)
+            if col >= 0 and col < len(self.tlColKey):
+                key = self.tlColKey[col]
+                if isDel:
+                    if key in tempData:
+                        del tempData[key]
+                else:
+                    tempData[key] = textStr
+                self._setData([index], tempData)
         except Exception as e:
             py3_common.Logging.error_(self.getClassName(),'onEditConfirm')
             py3_common.Logging.error_('index', index)
             raise e
 
     # 键盘esc
-    def onEditEscape(self, view, index):
+    def onEditEscape(self, view, index, col=0):
         py3_common.Logging.debug(self.getClassName(),'onEditEscape')
         hasModify = False
-        oldTextStr, suc = py3_common.getValueWithTlKey(self.tlNowData, [index])
+        # oldTextStr, suc = py3_common.getValueWithTlKey(self.tlNowData, [index])
+        oldTextStr = ''
+        suc = False
+        try:
+            key = self.tlColKey[col]
+            textStrTemp, suc = py3_common.getValueWithTlKey(self.tlNowData, [index, key])
+            if suc:
+                oldTextStr = textStrTemp
+        except Exception as e:
+            # raise e
+            pass
         if suc:
             textStr = view.getTextStr()
             hasModify = textStr != oldTextStr
@@ -532,7 +576,7 @@ class ViewAddCommonString(BaseView):
             elif value == False:
                 view.close()
             else:
-                self.onEditConfirm(view, index)
+                self.onEditConfirm(view, index, col=col)
         else:
             view.close()
 

@@ -354,7 +354,7 @@ def loadJsonToList(path, ignoreLog=False, isOrdered=True):
 
 # 将list写入json
 def dumpJsonFromList(path, config_List, indent=None, sort_keys=False, print_dump_path=True):
-    if not config_List or not path:
+    if config_List == None or not path:
         return False
 
     with open(path,"wb") as _config:

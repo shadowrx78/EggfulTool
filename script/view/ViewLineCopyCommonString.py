@@ -36,23 +36,23 @@ from ..extend.UndoEntry import UndoEntry
 M_PageShowNum = 7     #一页显示多少个，要算出来太复杂，直接写死
 
 # 列表选择复制文本界面
-class ViewLineCopyString(BaseView):
+class ViewLineCopyCommonString(BaseView):
     """
     列表选择复制文本界面
     参数:
     initWindow:tkObj 父容器
-    tlString:list 传入字符串列表
+    tlTmCommonString:list 传入常用字符串列表
     editor:tk.Entry|tk.Text 焦点所在输入框组件
     fCallback:function(copyStr:string, index:int) 回调函数
     isCopyStr:bool 是否复制到剪贴板，默认True
     title:string 弹窗标题
     """
-    def __init__(self, initWindow, tlString, editor=None, fCallback=None, isCopyStr=True, title=None):
+    def __init__(self, initWindow, tlTmCommonString, editor=None, fCallback=None, isCopyStr=True, title=None):
         if self.checkUniqueNeedClose():
             return
-        super(ViewLineCopyString, self).__init__(initWindow)
+        super(ViewLineCopyCommonString, self).__init__(initWindow)
         self.initWindow = initWindow
-        self.tlString = tlString
+        self.tlTmCommonString = tlTmCommonString
         self.editor = editor
         self.fCallback = fCallback
         self.isCopyStr = isCopyStr
@@ -194,12 +194,15 @@ class ViewLineCopyString(BaseView):
             else:
                 pattern = re.compile(r'%s' % fixStr, flags=re.I)
 
-        if self.tlString != None:
-            for i in range(0,len(self.tlString)):
-                text = self.tlString[i]
+        if self.tlTmCommonString != None:
+            for i in range(0,len(self.tlTmCommonString)):
+                # text = self.tlTmCommonString[i]
+                tmCommonString = self.tlTmCommonString[i]
+                text = self.getShowString(self.tlTmCommonString[i])
+                valueStr, remarkStr = self.getValueStrNRemarkStr(tmCommonString)
                 canAdd = True
                 # if not re.search(r'^\s*$', self.searchStr) and not re.search(r'%s' % self.searchStr.lower(), text.lower()):
-                if not isEmpty and not pattern.search(text):
+                if not isEmpty and not pattern.search(valueStr) and not pattern.search(remarkStr):
                     canAdd = False
                 if canAdd:
                     self.tlConvertScreenIndex.append(i)       #记录
@@ -208,7 +211,7 @@ class ViewLineCopyString(BaseView):
 
     def onListboxLineSelect(self, event):
         # if self.tlScreenNodeData == None or self.tlConvertScreenIndex == None:
-        if len(self.tlString) == 0 or self.tlConvertScreenIndex == None:
+        if len(self.tlTmCommonString) == 0 or self.tlConvertScreenIndex == None:
             return
         listbox = self.listboxLine
         tlIndex = list()
@@ -232,7 +235,7 @@ class ViewLineCopyString(BaseView):
 
         copyStr = None
         try:
-            copyStr = self.tlString[self.nowSelectIndex]
+            copyStr = self.tlTmCommonString[self.nowSelectIndex]['value']
             # self.clipboard_clear()
             # self.clipboard_append(copyStr)
             if self.isCopyStr:
@@ -303,7 +306,7 @@ class ViewLineCopyString(BaseView):
         return True
 
     def selectListboxWithShift(self, shift, isPageChange=False):
-        if len(self.tlString) == 0 or self.tlConvertScreenIndex == None:
+        if len(self.tlTmCommonString) == 0 or self.tlConvertScreenIndex == None:
             return
         listbox = self.listboxLine
         tlIndex = list()
@@ -343,3 +346,23 @@ class ViewLineCopyString(BaseView):
         v = self.checkbuttonNoIgnorecaseVar
         v.set(0 if v.get() > 0 else 1)
         self.onNoIgnorecaseVarChange()
+
+
+
+
+    # 获取显示用的文本
+    def getShowString(self, tmCommonString, valueStrLenMax=10):
+        tempStr = ''
+        valueStr, remarkStr = self.getValueStrNRemarkStr(tmCommonString)
+        if len(valueStr) > valueStrLenMax:
+            tempStr += valueStr[:valueStrLenMax] + '...'
+        else:
+            tempStr += valueStr
+        tempStr += '    ' + remarkStr
+        return tempStr
+
+    # 获取值和备注
+    def getValueStrNRemarkStr(self, tmCommonString):
+        valueStr = tmCommonString['value']
+        remarkStr = tmCommonString['remark'] if 'remark' in tmCommonString else ''
+        return valueStr, remarkStr

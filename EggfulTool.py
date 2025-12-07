@@ -49,7 +49,7 @@ from script.node.CreateNode import *
 from script.view.ViewListLineNode import *
 from script.view.ViewNodeSetting import *
 from script.view.ViewRootSetting import *
-from script.view.ViewLineCopyString import ViewLineCopyString
+from script.view.ViewLineCopyCommonString import ViewLineCopyCommonString
 from script.view.ViewAddCommonString import ViewAddCommonString
 
 # import win32ui
@@ -570,6 +570,7 @@ class MainGui(Frame):
         # self.init_desc_file(folder_selected)
         refreshNodesConfig()
         refreshProjectSetting()
+        refreshTlCommonString()
         # 弹出初始化错误提示
         showTlInitErrorMsg()
         # self.refreshColors()
@@ -727,7 +728,7 @@ ctrl+tab：切换模式
             editor = parent.focus_get()
         except Exception as e:
             raise e
-        view = ViewLineCopyString(parent, GlobalValue.TL_COMMON_STRING, editor=editor)
+        view = ViewLineCopyCommonString(parent, GlobalValue.TLTM_COMMON_STRING, editor=editor)
 
     # 添加常用文本
     def menuOpenViewAddCommonString(self):

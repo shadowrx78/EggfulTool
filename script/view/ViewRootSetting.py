@@ -343,7 +343,7 @@ class ViewRootSetting(BaseView):
             buttonPosMainGui = Button(frameBtn, text='搜索界面', command=lambda k='ViewListLineNode', tStr='设置搜索界面弹出位置' :self.onBtnViewPosClick(k, titleStr=tStr), takefocus=0)
             buttonPosMainGui.grid(row=0, column=2, sticky='w', padx=padding[0], pady=padding[1])
             self.tkThemeHelper.addTkObj(buttonPosMainGui)
-            buttonPosMainGui = Button(frameBtn, text='复制常用文本界面', command=lambda k='ViewLineCopyString', tStr='设置搜索界面弹出位置' :self.onBtnViewPosClick(k, titleStr=tStr), takefocus=0)
+            buttonPosMainGui = Button(frameBtn, text='复制常用文本界面', command=lambda k='ViewLineCopyCommonString', tStr='设置搜索界面弹出位置' :self.onBtnViewPosClick(k, titleStr=tStr), takefocus=0)
             buttonPosMainGui.grid(row=0, column=3, sticky='w', padx=padding[0], pady=padding[1])
             self.tkThemeHelper.addTkObj(buttonPosMainGui)
 

@@ -19,6 +19,9 @@ def custom_dumps(obj, path="", compress_paths=None, indent=2, level=0, force_com
 
     # 检查当前路径是否需要“子项压缩”模式
     should_compress_children = match_path(path, compress_paths)
+    if path == '' and len(compress_paths) == 0:
+        # 压缩路径什么都不配时处理最外层
+        should_compress_children = True
 
     if isinstance(obj, dict):
         if not obj:
