@@ -520,6 +520,37 @@ def backupJson(filePath, toDir=None):
     py3_common.copy_file_in_dir(filePath, newFPath)
     return newFPath
 
+# 备份整个文件夹
+def backupDir(dirPath, toDir=None):
+    if not os.path.isdir(dirPath):
+        return None
+    if toDir == None:
+        toDir = JSON_BACKUP_DIR
+    py3_common.check_dir(toDir)
+
+    timeStamp = time.time()
+    timeArray = time.localtime(timeStamp)
+    timeStr = time.strftime('%Y-%m-%d_%H-%M-%S', timeArray)
+    oldDName = os.path.basename(dirPath)
+    newDName = oldDName + '_' + timeStr
+
+    newDPath = os.path.realpath(os.path.join(toDir, newDName))
+    i = 1
+    while os.path.isdir(newDPath):
+        newDPath = os.path.realpath(os.path.join(toDir, newDName + '(' + str(i) + ')'))
+        i += 1
+
+    py3_common.check_dir(newDPath)
+    py3_common.copy_file_in_dir(dirPath, newDPath)
+    return newDPath
+
+def backupFileOrDir(path, toDir=None):
+    if os.path.isfile(path):
+        return backupJson(path, toDir=toDir)
+    elif os.path.isdir(path):
+        return backupDir(path, toDir=toDir)
+    return None
+
 # 将缓存备份到文件
 def backupTempJson(jList, filePath, toDir):
     newFName = getBackupJsonName(filePath, toDir, useFileTime=False)
@@ -576,7 +607,7 @@ def refreshProjectSetting():
         jList = py3_common.loadJsonToList(SETTING_CONFIG_JSON_PATH)
         if jList == None or not isinstance(jList, dict):
             # jList = list()
-            backupFilePath = backupJson(SETTING_CONFIG_JSON_PATH, JSON_ERROR_BACKUP_DIR)
+            backupFilePath = backupFileOrDir(SETTING_CONFIG_JSON_PATH, JSON_ERROR_BACKUP_DIR)
             errStr = '读取设置失败，已备份至"%s"' % backupFilePath
             # messagebox.showerror('错误', errStr)
             global TL_INIT_ERROR_MSG
@@ -700,7 +731,7 @@ def refreshNodesConfig():
         # 数据有问题，要先备份下
         if jList == None or not isinstance(jList, list):
             # jList = list()
-            backupFilePath = backupJson(NODES_CONFIG_JSON_PATH, JSON_ERROR_BACKUP_DIR)
+            backupFilePath = backupFileOrDir(NODES_CONFIG_JSON_PATH, JSON_ERROR_BACKUP_DIR)
             errStr = '读取节点配置失败，已备份至"%s"' % backupFilePath
             # messagebox.showerror('错误', errStr)
             TL_INIT_ERROR_MSG.append(errStr)

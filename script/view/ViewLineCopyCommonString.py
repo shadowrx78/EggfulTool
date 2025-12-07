@@ -358,7 +358,8 @@ class ViewLineCopyCommonString(BaseView):
             tempStr += valueStr[:valueStrLenMax] + '...'
         else:
             tempStr += valueStr
-        tempStr += '    ' + remarkStr
+        if len(remarkStr) > 0:
+            tempStr += '    <备注>' + remarkStr
         return tempStr
 
     # 获取值和备注
